@@ -1,0 +1,52 @@
+{
+  "name": "zsql-pc",
+  "version": "1.0.0",
+  "description": "ZSQL PC - Electron Application with TDesign",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": ["electron", "vue", "tdesign"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "electron": "^42.3.1",
+    "tdesign-vue-next": "^1.20.0",
+    "vue": "^3.5.35"
+  },
+  "devDependencies": {
+    "electron-builder": "^25.1.7"
+  },
+  "build": {
+    "appId": "com.zsql.pc",
+    "productName": "ZSQL PC",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  }
+}

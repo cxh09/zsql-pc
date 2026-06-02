@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智拾清澜工作台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tdesign-vue-next/dist/tdesign.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    #app {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      padding-top: 40px;
+    }
+
+    /* ========== 登录页 ========== */
+    .login-page {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .bg-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    .brand-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px;
+      color: white;
+      position: relative;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .login-section {
+      width: 480px;
+      min-width: 480px;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .login-header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .login-header p {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .login-button {
+      margin-top: 8px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 28px 0;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .divider span {
+      padding: 0 16px;
+    }
+
+    .qr-login-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .qr-code-box-large {
+      width: 220px;
+      height: 220px;
+      padding: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .switch-login-type {
+      margin-top: 16px;
+    }
+
+    /* ========== 工作台 ========== */
+    .dashboard-page {
+      width: 100%;
+      height: calc(100vh - 40px);
+    }
+
+    .t-default-menu .t-menu__logo {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--td-border-level-1-color);
+    }
+
+    .aside-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .aside-brand-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+      white-space: nowrap;
+    }
+
+    .dashboard-content {
+      padding: 24px;
+      overflow-y: auto;
+      height: calc(100vh - 40px);
+    }
+
+    .tab-bar-wrapper {
+      background: var(--td-bg-color-container);
+      border-bottom: 1px solid var(--td-border-level-1-color);
+      display: flex;
+      align-items: flex-end;
+      min-height: 48px;
+    }
+
+    .tab-bar-wrapper .t-tabs {
+      height: 100%;
+    }
+
+    .tab-bar-wrapper .t-tabs__header {
+      margin-bottom: 0;
+    }
+
+    .welcome-card {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border-radius: 12px;
+      padding: 32px 40px;
+      color: white;
+      margin-bottom: 24px;
+    }
+
+    .welcome-card h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .welcome-card p {
+      font-size: 14px;
+      opacity: 0.85;
+      margin-bottom: 24px;
+    }
+
+    .welcome-stats {
+      display: flex;
+      gap: 48px;
+    }
+
+    .welcome-stats .stat-number {
+      font-size: 26px;
+      font-weight: 700;
+      display: block;
+    }
+
+    .welcome-stats .stat-label {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-card-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: white;
+      stroke-width: 1.5;
+    }
+
+    .app-list .t-list-item {
+      padding: 14px 24px;
+    }
+
+    .app-row {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      gap: 16px;
+    }
+
+    .app-row .app-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .app-row .app-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--td-text-color-primary);
+      margin-bottom: 2px;
+    }
+
+    .app-row .app-desc {
+      font-size: 13px;
+      color: var(--td-text-color-placeholder);
+    }
+
+    .app-row .app-time {
+      font-size: 13px;
+      color: var(--td-text-color-placeholder);
+      white-space: nowrap;
+    }
+
+    /* 深色模式适配 */
+    .tdesign-theme__dark .welcome-card {
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    }
+
+    .tdesign-theme__dark .login-section {
+      background: rgba(30, 30, 30, 0.85);
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .tdesign-theme__dark .login-header h1 {
+      color: #f1f5f9;
+    }
+
+    .tdesign-theme__dark .login-header p {
+      color: #94a3b8;
+    }
+
+    .tdesign-theme__dark .divider span {
+      color: #94a3b8;
+    }
+
+    /* 响应式 */
+    @media (max-width: 900px) {
+      .login-page .brand-section {
+        display: none;
+      }
+      .login-page .login-section {
+        width: 100%;
+        min-width: unset;
+      }
+    }
+
+    /* ========== 自定义标题栏 ========== */
+    .title-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: var(--td-bg-color-container);
+      border-bottom: 1px solid var(--td-border-level-1-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1000;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .title-bar-drag {
+      flex: 1;
+      height: 100%;
+      -webkit-app-region: drag;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .title-bar-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--td-text-color-primary);
+      flex-shrink: 0;
+    }
+
+    .title-bar-brand svg {
+      width: 16px;
+      height: 16px;
+      fill: #3b82f6;
+    }
+
+    .title-bar-tabs {
+      -webkit-app-region: no-drag;
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+
+    .title-bar-tabs .t-tabs {
+      height: 100%;
+      width: 100%;
+    }
+
+    .title-bar-tabs .t-tabs__header {
+      margin-bottom: 0;
+    }
+
+    .title-bar-tabs .t-tabs__nav-wrap {
+      height: 40px;
+    }
+
+    .title-bar-tabs .t-tabs__nav-container {
+      height: 40px;
+    }
+
+    .title-bar-tabs .t-tabs__nav {
+      height: 40px;
+    }
+
+    .title-bar-tabs .t-tab-panel {
+      display: none;
+    }
+
+    .title-bar-controls {
+      display: flex;
+      height: 100%;
+      -webkit-app-region: no-drag;
+      flex-shrink: 0;
+    }
+
+    .title-bar-btn {
+      width: 46px;
+      height: 100%;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--td-text-color-primary);
+      transition: background 0.15s;
+      font-family: "Segoe MDL2 Assets", "Arial Unicode MS", sans-serif;
+    }
+
+    .title-bar-btn:hover {
+      background: var(--td-bg-color-secondarycontainer);
+    }
+
+    .title-bar-btn.close:hover {
+      background: #e81123;
+      color: white;
+    }
+
+    .tdesign-theme__dark .title-bar {
+      background: #1e1e1e;
+      border-bottom-color: #333;
+    }
+
+    .tdesign-theme__dark .title-bar-btn.close:hover {
+      background: #e81123;
+    }
+
+    .tdesign-theme__dark .title-bar-brand svg {
+      fill: #60a5fa;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- ===== 自定义标题栏 ===== -->
+    <div class="title-bar">
+      <div class="title-bar-drag">
+        <div class="title-bar-brand">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+          <span>智拾清澜工作台</span>
+        </div>
+        <!-- 标签栏（登录后显示） -->
+        <div v-if="isLoggedIn" class="title-bar-tabs">
+          <t-tabs v-model="tabValue" theme="card" :addable="true" @add="addTab('新页面')" @remove="removeTab">
+            <t-tab-panel
+              v-for="data in tabData"
+              :key="data.value"
+              :value="data.value"
+              :label="data.label"
+              :removable="data.removable"
+            />
+          </t-tabs>
+        </div>
+      </div>
+      <div class="title-bar-controls">
+        <button class="title-bar-btn" @click="minimizeWindow">─</button>
+        <button class="title-bar-btn" @click="maximizeWindow">☐</button>
+        <button class="title-bar-btn close" @click="closeWindow">✕</button>
+      </div>
+    </div>
+
+    <!-- ===== 登录页 ===== -->
+    <div v-if="!isLoggedIn" class="login-page">
+      <img src="assets/bgpic.png" alt="banner" class="bg-image" onerror="this.style.display='none'">
+
+      <div class="brand-section"></div>
+
+      <div class="login-section">
+        <div class="login-card">
+          <!-- 二维码登录 -->
+          <div v-if="showQRCode" class="qr-login-section">
+            <div class="login-header">
+              <h1>扫码登录</h1>
+              <p>请使用App扫一扫登录</p>
+            </div>
+            <div class="qr-code-box-large">
+              <svg width="200" height="200" viewBox="0 0 120 120">
+                <rect x="5" y="5" width="40" height="40" fill="none" stroke="#1f2937" stroke-width="4"/>
+                <rect x="75" y="5" width="40" height="40" fill="none" stroke="#1f2937" stroke-width="4"/>
+                <rect x="5" y="75" width="40" height="40" fill="none" stroke="#1f2937" stroke-width="4"/>
+                <rect x="12" y="12" width="26" height="26" fill="#1f2937"/>
+                <rect x="82" y="12" width="26" height="26" fill="#1f2937"/>
+                <rect x="12" y="82" width="26" height="26" fill="#1f2937"/>
+                <rect x="19" y="19" width="12" height="12" fill="white"/>
+                <rect x="89" y="19" width="12" height="12" fill="white"/>
+                <rect x="19" y="89" width="12" height="12" fill="white"/>
+                <rect x="55" y="10" width="8" height="8" fill="#1f2937"/>
+                <rect x="55" y="25" width="8" height="8" fill="#1f2937"/>
+                <rect x="55" y="40" width="8" height="8" fill="#1f2937"/>
+                <rect x="10" y="55" width="8" height="8" fill="#1f2937"/>
+                <rect x="25" y="55" width="8" height="8" fill="#1f2937"/>
+                <rect x="40" y="55" width="8" height="8" fill="#1f2937"/>
+                <rect x="55" y="55" width="50" height="50" fill="#1f2937"/>
+                <rect x="60" y="60" width="40" height="40" fill="white"/>
+                <rect x="70" y="70" width="20" height="20" fill="#1f2937"/>
+              </svg>
+            </div>
+            <div class="switch-login-type">
+              <t-link theme="primary" @click="handleQRLogin">使用账号密码登录</t-link>
+            </div>
+          </div>
+
+          <!-- 账号密码登录 -->
+          <div v-else class="account-login-section">
+            <div class="login-header">
+              <h1>欢迎使用</h1>
+              <p>请登录您的账户以继续</p>
+            </div>
+
+            <div class="login-form">
+              <t-input
+                v-model="formData.username"
+                placeholder="请输入用户名/邮箱"
+                size="large"
+                clearable
+              >
+                <template #prefix-icon>
+                  <t-icon name="user" />
+                </template>
+              </t-input>
+
+              <t-input
+                v-model="formData.password"
+                type="password"
+                placeholder="请输入密码"
+                size="large"
+                clearable
+              >
+                <template #prefix-icon>
+                  <t-icon name="lock-on" />
+                </template>
+              </t-input>
+
+              <div class="form-options">
+                <t-checkbox v-model="formData.remember">记住我</t-checkbox>
+                <t-link theme="primary" hover="color">忘记密码?</t-link>
+              </div>
+
+              <t-button
+                theme="primary"
+                size="large"
+                block
+                :loading="loading"
+                @click="handleLogin"
+                class="login-button"
+              >
+                登录
+              </t-button>
+            </div>
+
+            <div class="divider">
+              <span>或使用以下方式登录</span>
+            </div>
+
+            <t-button
+              theme="default"
+              variant="outline"
+              size="large"
+              block
+              @click="handleQRLogin"
+            >
+              <template #icon>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+              </template>
+              扫码登录
+            </t-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 工作台 ===== -->
+    <div v-else class="dashboard-page">
+      <t-layout style="height: 100%">
+        <t-aside>
+          <t-menu theme="light" :value="tabValue" style="height: 100%; padding-bottom: 56px;">
+             <template #logo>
+               <div class="aside-brand">
+                 <span class="aside-brand-title">智拾清澜工作台</span>
+               </div>
+             </template>
+             <t-menu-item value="dashboard" @click="handleMenuClick('dashboard')">
+               <template #icon><t-icon name="view-module" /></template>
+               概况
+             </t-menu-item>
+             <t-menu-item value="applications" @click="handleMenuClick('applications')">
+               <template #icon><t-icon name="file" /></template>
+               预约表单
+             </t-menu-item>
+             <t-menu-item value="statistics" @click="handleMenuClick('statistics')">
+               <template #icon><t-icon name="chart-bar" /></template>
+               数据统计
+             </t-menu-item>
+             <t-menu-item value="settings" @click="handleMenuClick('settings')">
+               <template #icon><t-icon name="setting" /></template>
+               系统设置
+             </t-menu-item>
+           </t-menu>
+          <div style="position: fixed; bottom: 0; width: 232px; padding: 12px 16px; background: var(--td-bg-color-container); border-top: 1px solid var(--td-border-level-1-color);">
+            <t-button theme="danger" variant="text" block @click="handleLogout">
+              <template #icon><t-icon name="logout" /></template>
+              退出登录
+            </t-button>
+          </div>
+        </t-aside>
+        <t-layout>
+          <t-header></t-header>
+          <t-content>
+            <div class="dashboard-content">
+              <!-- 概况 -->
+              <template v-if="currentTabLabel === '概况'">
+                <div class="welcome-card">
+                  <h2>欢迎回来，管理员</h2>
+                  <p>以下是智拾清澜项目预约单的最新动态</p>
+                    <div class="welcome-stats">
+                      <div>
+                        <span class="stat-number">128</span>
+                        <span class="stat-label">总预约单</span>
+                      </div>
+                      <div>
+                        <span class="stat-number">24</span>
+                        <span class="stat-label">待受理</span>
+                      </div>
+                      <div>
+                        <span class="stat-number">16</span>
+                        <span class="stat-label">正在处理</span>
+                      </div>
+                      <div>
+                        <span class="stat-number">72</span>
+                        <span class="stat-label">已处理</span>
+                      </div>
+                      <div>
+                        <span class="stat-number">16</span>
+                        <span class="stat-label">已评价</span>
+                      </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                  <t-card :bordered="true">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                      <span style="font-size: 14px; color: var(--td-text-color-placeholder);">今日新增预约</span>
+                      <div class="stat-card-icon" style="background: #3b82f6;">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                      </div>
+                    </div>
+                    <div style="font-size: 26px; font-weight: 700; color: var(--td-text-color-primary); margin-bottom: 4px;">8</div>
+                    <div style="font-size: 13px; color: #10b981;">↑ 3 较昨日</div>
+                  </t-card>
+                  <t-card :bordered="true">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                      <span style="font-size: 14px; color: var(--td-text-color-placeholder);">本月累计</span>
+                      <div class="stat-card-icon" style="background: #10b981;">
+                        <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      </div>
+                    </div>
+                    <div style="font-size: 26px; font-weight: 700; color: var(--td-text-color-primary); margin-bottom: 4px;">86</div>
+                    <div style="font-size: 13px; color: #10b981;">↑ 12% 较上月</div>
+                  </t-card>
+                  <t-card :bordered="true">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                      <span style="font-size: 14px; color: var(--td-text-color-placeholder);">平均响应时长</span>
+                      <div class="stat-card-icon" style="background: #f59e0b;">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                      </div>
+                    </div>
+                    <div style="font-size: 26px; font-weight: 700; color: var(--td-text-color-primary); margin-bottom: 4px;">2.4h</div>
+                    <div style="font-size: 13px; color: #10b981;">↓ 0.5h 较上月</div>
+                  </t-card>
+                </div>
+
+                <t-card title="最近预约" :bordered="true">
+                  <template #actions>
+                    <t-link theme="primary" @click="ensureTab('预约表单')">查看全部</t-link>
+                  </template>
+                  <t-list class="app-list">
+                    <t-list-item>
+                      <div class="app-row">
+                        <t-avatar size="40px" style="background: #eff6ff; color: #3b82f6; font-weight: 600; border-radius: 10px;">张</t-avatar>
+                        <div class="app-info">
+                          <div class="app-name">张建国 - 水下打捞预约</div>
+                          <div class="app-desc">长江入海口东侧水域 · 预估850kg</div>
+                        </div>
+                        <t-tag theme="warning" variant="light">待受理</t-tag>
+                        <span class="app-time">15分钟前</span>
+                      </div>
+                    </t-list-item>
+                    <t-list-item>
+                      <div class="app-row">
+                        <t-avatar size="40px" style="background: #ecfdf5; color: #059669; font-weight: 600; border-radius: 10px;">李</t-avatar>
+                        <div class="app-info">
+                          <div class="app-name">李明辉 - 水下打捞预约</div>
+                          <div class="app-desc">珠江口航道附近 · 预估1200kg</div>
+                        </div>
+                        <t-tag theme="warning" variant="light">待受理</t-tag>
+                        <span class="app-time">1小时前</span>
+                      </div>
+                    </t-list-item>
+                    <t-list-item>
+                      <div class="app-row">
+                        <t-avatar size="40px" style="background: #fef3c7; color: #d97706; font-weight: 600; border-radius: 10px;">王</t-avatar>
+                        <div class="app-info">
+                          <div class="app-name">王大海 - 水下打捞预约</div>
+                          <div class="app-desc">舟山群岛北侧海域 · 预估2000kg</div>
+                        </div>
+                        <t-tag theme="success" variant="light">正在处理</t-tag>
+                        <span class="app-time">2小时前</span>
+                      </div>
+                    </t-list-item>
+                    <t-list-item>
+                      <div class="app-row">
+                        <t-avatar size="40px" style="background: #eff6ff; color: #3b82f6; font-weight: 600; border-radius: 10px;">赵</t-avatar>
+                        <div class="app-info">
+                          <div class="app-name">赵远洋 - 水下打捞预约</div>
+                          <div class="app-desc">渤海湾天津港外 · 预估600kg</div>
+                        </div>
+                        <t-tag theme="default" variant="light">已处理</t-tag>
+                        <span class="app-time">昨天</span>
+                      </div>
+                    </t-list-item>
+                  </t-list>
+                </t-card>
+              </template>
+
+              <!-- 预约表单 -->
+              <template v-else-if="currentTabLabel === '预约表单'">
+                <t-card title="水下打捞预约表单" :bordered="true">
+                  <t-table
+                    :data="appointmentData"
+                    :columns="appointmentColumns"
+                    row-key="id"
+                    :pagination="{ pageSize: 10, total: appointmentData.length }"
+                    stripe
+                  >
+                    <template #status="{ row }">
+                      <t-tag v-if="row.status === '待受理'" theme="warning" variant="light">{{ row.status }}</t-tag>
+                      <t-tag v-else-if="row.status === '正在处理'" theme="success" variant="light">{{ row.status }}</t-tag>
+                      <t-tag v-else-if="row.status === '已处理'" theme="default" variant="light">{{ row.status }}</t-tag>
+                      <t-tag v-else-if="row.status === '已评价'" theme="primary" variant="light">{{ row.status }}</t-tag>
+                      <t-tag v-else theme="default" variant="light">{{ row.status }}</t-tag>
+                    </template>
+                    <template #operation="{ row }">
+                      <t-space>
+                        <t-link theme="primary" @click="handleViewAppointment({ row })">查看</t-link>
+                        <t-link v-if="row.status === '待受理'" theme="success" @click="handleProcessAppointment({ row })">受理</t-link>
+                      </t-space>
+                    </template>
+                  </t-table>
+                </t-card>
+              </template>
+
+              <!-- 数据统计 -->
+              <template v-else-if="currentTabLabel === '数据统计'">
+                <t-card title="数据统计" :bordered="true">
+                  <p>统计功能开发中...</p>
+                </t-card>
+              </template>
+
+              <!-- 系统设置 -->
+              <template v-else-if="currentTabLabel === '系统设置'">
+                <t-card title="系统设置" :bordered="true">
+                  <t-form layout="vertical">
+                    <t-form-item label="主题模式">
+                      <t-radio-group :value="themeMode" @change="setTheme">
+                        <t-radio-button value="light">浅色模式</t-radio-button>
+                        <t-radio-button value="dark">深色模式</t-radio-button>
+                      </t-radio-group>
+                    </t-form-item>
+                    <t-divider />
+                    <t-form-item label="通知设置">
+                      <t-space direction="vertical" style="width: 100%;">
+                        <t-checkbox checked>新预约单通知</t-checkbox>
+                        <t-checkbox checked>处理完成通知</t-checkbox>
+                        <t-checkbox>系统更新通知</t-checkbox>
+                      </t-space>
+                    </t-form-item>
+                    <t-divider />
+                    <t-form-item label="操作日志">
+                      <t-table
+                        :data="[
+                          { time: '2026-06-02 09:23', user: '管理员', action: '受理预约单 #0032', ip: '192.168.1.100' },
+                          { time: '2026-06-02 11:45', user: '管理员', action: '完成预约单 #0028', ip: '192.168.1.100' },
+                          { time: '2026-06-01 14:12', user: '管理员', action: '修改系统配置', ip: '192.168.1.100' }
+                        ]"
+                        :columns="[
+                          { colKey: 'time', title: '时间', width: 180 },
+                          { colKey: 'user', title: '操作人', width: 100 },
+                          { colKey: 'action', title: '操作内容', ellipsis: true },
+                          { colKey: 'ip', title: 'IP地址', width: 150 }
+                        ]"
+                        row-key="time"
+                        size="small"
+                        :bordered="false"
+                      />
+                    </t-form-item>
+                    <t-divider />
+                    <t-form-item label="关于系统">
+                      <t-descriptions bordered>
+                        <t-descriptions-item label="软件名称">智拾清澜工作台</t-descriptions-item>
+                        <t-descriptions-item label="版本号">v1.0.0</t-descriptions-item>
+                        <t-descriptions-item label="Electron版本">42.x</t-descriptions-item>
+                        <t-descriptions-item label="前端框架">Vue 3 + TDesign</t-descriptions-item>
+                      </t-descriptions>
+                    </t-form-item>
+                  </t-form>
+                </t-card>
+              </template>
+
+              <!-- 个人设置 -->
+              <template v-else-if="currentTabLabel === '个人设置'">
+                <t-card title="个人设置" :bordered="true">
+                  <p>个人设置开发中...</p>
+                </t-card>
+              </template>
+
+              <!-- 其他新页面 -->
+              <template v-else>
+                <t-card :title="currentTabLabel" :bordered="true">
+                  <p style="padding: 20px 0; color: var(--td-text-color-placeholder);">{{ currentTabLabel }} 页面内容</p>
+                </t-card>
+              </template>
+            </div>
+          </t-content>
+        </t-layout>
+      </t-layout>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tdesign-vue-next/dist/tdesign.min.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

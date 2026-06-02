@@ -11,7 +11,11 @@
     "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux"
   },
-  "keywords": ["electron", "vue", "tdesign"],
+  "keywords": [
+    "electron",
+    "vue",
+    "tdesign"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -21,7 +25,7 @@
     "vue": "^3.5.35"
   },
   "devDependencies": {
-    "electron-builder": "^25.1.7"
+    "electron-builder": "^25.1.8"
   },
   "build": {
     "appId": "com.zsql.pc",

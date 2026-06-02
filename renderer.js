@@ -1,4 +1,4 @@
-const { createApp, ref, reactive, computed } = Vue
+const { createApp, ref, reactive, computed, watch } = Vue
 
 const App = {
   setup() {
@@ -15,6 +15,8 @@ const App = {
     let tabId = 0
     const tabValue = ref('')
     const tabData = ref([])
+    const browserUrls = reactive({})
+    const browserInputUrl = ref('')
 
     const addTab = (label) => {
       const value = `tab_${tabId++}`
@@ -25,6 +27,30 @@ const App = {
       })
       tabValue.value = value
       return value
+    }
+
+    const addBrowserTab = () => {
+      const value = `tab_${tabId++}`
+      tabData.value.push({
+        value,
+        label: '浏览器',
+        removable: true,
+        isBrowser: true
+      })
+      browserUrls[value] = ''
+      tabValue.value = value
+      browserInputUrl.value = ''
+      return value
+    }
+
+    const navigateToUrl = () => {
+      if (!tabValue.value) return
+      let url = browserInputUrl.value.trim()
+      if (!url) return
+      if (!/^https?:\/\//i.test(url)) {
+        url = 'https://' + url
+      }
+      browserUrls[tabValue.value] = url
     }
 
     const ensureTab = (label) => {
@@ -144,6 +170,25 @@ const App = {
       return tab ? tab.label : ''
     })
 
+    const currentTab = computed(() => {
+      return tabData.value.find(t => t.value === tabValue.value)
+    })
+
+    const isCurrentTabBrowser = computed(() => {
+      return currentTab.value?.isBrowser || false
+    })
+
+    const currentBrowserUrl = computed(() => {
+      if (!tabValue.value || !browserUrls[tabValue.value]) return ''
+      return browserUrls[tabValue.value]
+    })
+
+    watch(tabValue, (newVal) => {
+      if (newVal && browserUrls[newVal] !== undefined) {
+        browserInputUrl.value = browserUrls[newVal]
+      }
+    })
+
     return {
       isLoggedIn,
       loading,
@@ -153,8 +198,14 @@ const App = {
       tabValue,
       tabData,
       currentTabLabel,
+      currentTab,
+      isCurrentTabBrowser,
+      currentBrowserUrl,
+      browserInputUrl,
       addTab,
+      addBrowserTab,
       removeTab,
+      navigateToUrl,
       handleMenuClick,
       handleLogin,
       handleQRLogin,

@@ -21,7 +21,7 @@
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      padding-top: 40px;
+      padding-top: 48px;
     }
 
     /* ========== 登录页 ========== */
@@ -157,15 +157,6 @@
     .dashboard-page {
       width: 100%;
       height: calc(100vh - 48px);
-    }
-
-    .t-default-menu .t-menu__logo {
-      height: 64px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 0 20px;
-      border-bottom: 1px solid var(--td-border-level-1-color);
     }
 
     .aside-brand {
@@ -370,7 +361,7 @@
     .title-bar-brand svg {
       width: 16px;
       height: 16px;
-      fill: #3b82f6;
+      fill: var(--td-brand-color);
     }
 
     .title-bar-tabs {
@@ -439,17 +430,92 @@
       color: white;
     }
 
-    .tdesign-theme__dark .title-bar {
-      background: #1e1e1e;
-      border-bottom-color: #333;
-    }
-
     .tdesign-theme__dark .title-bar-btn.close:hover {
       background: #e81123;
     }
 
-    .tdesign-theme__dark .title-bar-brand svg {
-      fill: #60a5fa;
+    /* ========== 浏览器标签页 ========== */
+    .browser-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: var(--td-bg-color-container);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .browser-nav {
+      flex-shrink: 0;
+      padding: 12px 16px;
+      background: var(--td-bg-color-secondarycontainer);
+      border-bottom: 1px solid var(--td-border-level-1-color);
+    }
+
+    .browser-url-bar {
+      display: flex;
+      gap: 8px;
+    }
+
+    .browser-url-input {
+      flex: 1;
+      height: 36px;
+      padding: 0 14px;
+      border: 1px solid var(--td-border-level-2-color);
+      border-radius: 6px;
+      background: var(--td-bg-color-container);
+      color: var(--td-text-color-primary);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .browser-url-input:focus {
+      border-color: var(--td-brand-color);
+    }
+
+    .browser-url-input::placeholder {
+      color: var(--td-text-color-placeholder);
+    }
+
+    .browser-go-btn {
+      height: 36px;
+      padding: 0 18px;
+      border: none;
+      border-radius: 6px;
+      background: var(--td-brand-color);
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    .browser-go-btn:hover {
+      opacity: 0.85;
+    }
+
+    .browser-content {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .browser-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: white;
+    }
+
+    .browser-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 16px;
+      color: var(--td-text-color-placeholder);
+      font-size: 14px;
     }
   </style>
 </head>
@@ -466,7 +532,7 @@
         </div>
         <!-- 标签栏（登录后显示） -->
         <div v-if="isLoggedIn" class="title-bar-tabs">
-          <t-tabs v-model="tabValue" theme="card" :addable="true" @add="addTab('新页面')" @remove="removeTab">
+          <t-tabs v-model="tabValue" theme="card" :addable="true" @add="addBrowserTab" @remove="removeTab">
             <t-tab-panel
               v-for="data in tabData"
               :key="data.value"
@@ -604,11 +670,6 @@
       <t-layout style="height: 100%">
         <t-aside>
           <t-menu theme="light" :value="tabValue" style="height: 100%; padding-bottom: 56px;">
-             <template #logo>
-               <div class="aside-brand">
-                 <span class="aside-brand-title">智拾清澜工作台</span>
-               </div>
-             </template>
              <t-menu-item value="dashboard" @click="handleMenuClick('dashboard')">
                <template #icon><t-icon name="view-module" /></template>
                概况
@@ -637,8 +698,41 @@
           <t-header></t-header>
           <t-content>
             <div class="dashboard-content">
+              <!-- 浏览器标签页 -->
+              <template v-if="isCurrentTabBrowser">
+                <div class="browser-container">
+                  <div class="browser-nav">
+                    <div class="browser-url-bar">
+                      <input
+                        v-model="browserInputUrl"
+                        class="browser-url-input"
+                        placeholder="输入网址，例如 www.example.com"
+                        @keydown.enter="navigateToUrl"
+                      />
+                      <button class="browser-go-btn" @click="navigateToUrl">前往</button>
+                    </div>
+                  </div>
+                  <div class="browser-content">
+                    <iframe
+                      v-if="currentBrowserUrl"
+                      :src="currentBrowserUrl"
+                      class="browser-iframe"
+                      frameborder="0"
+                      sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-presentation"
+                    ></iframe>
+                    <div v-else class="browser-placeholder">
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--td-text-color-placeholder)" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+                      </svg>
+                      <p>在上方输入网址，开始浏览网页</p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
               <!-- 概况 -->
-              <template v-if="currentTabLabel === '概况'">
+              <template v-else-if="currentTabLabel === '概况'">
                 <div class="welcome-card">
                   <h2>欢迎回来，管理员</h2>
                   <p>以下是智拾清澜项目预约单的最新动态</p>

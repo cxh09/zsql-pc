@@ -38,6 +38,8 @@
       "preload.js",
       "index.html",
       "renderer.js",
+      "pages/**/*",
+      "assets/**/*",
       "node_modules/**/*"
     ],
     "win": {

@@ -2,5 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electronAPI', {
   maximize: () => ipcRenderer.invoke('window-maximize'),
-  isMaximized: () => ipcRenderer.invoke('window-is-maximized')
+  isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+  onOpenNewTab: (callback) => {
+    ipcRenderer.on('open-new-tab', (_event, url) => callback(url))
+  }
 })

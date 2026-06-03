@@ -19,7 +19,7 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: var(--td-bg-color-page);
-      padding: 24px;
+      padding: 16px 24px;
     }
 
     #app {
@@ -46,14 +46,6 @@
     }
 
     /* 统计卡片 */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
-      flex-shrink: 0;
-    }
-
     .stat-card {
       background: var(--td-bg-color-container);
       border-radius: 8px;
@@ -393,12 +385,6 @@
       background: rgba(255,255,255,0.3);
     }
 
-    /* 响应式 */
-    @media (max-width: 1200px) {
-      .stats-row {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
   </style>
 </head>
 <body>
@@ -416,61 +402,69 @@
     </div>
 
     <!-- 统计卡片 -->
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <div class="stat-card-icon blue">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
+    <t-row :gutter="[16, 16]" style="margin-bottom: 24px;">
+      <t-col :span="6">
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <div class="stat-card-icon blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </div>
+            <span class="stat-card-title">全部预约</span>
           </div>
-          <span class="stat-card-title">全部预约</span>
+          <div class="stat-card-value">{{ stats.total }}</div>
         </div>
-        <div class="stat-card-value">{{ stats.total }}</div>
-      </div>
+      </t-col>
 
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <div class="stat-card-icon orange">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
+      <t-col :span="6">
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <div class="stat-card-icon orange">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <span class="stat-card-title">待处理</span>
           </div>
-          <span class="stat-card-title">待处理</span>
+          <div class="stat-card-value">{{ stats.pending }}</div>
         </div>
-        <div class="stat-card-value">{{ stats.pending }}</div>
-      </div>
+      </t-col>
 
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <div class="stat-card-icon green">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
+      <t-col :span="6">
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <div class="stat-card-icon green">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+            <span class="stat-card-title">处理中</span>
           </div>
-          <span class="stat-card-title">处理中</span>
+          <div class="stat-card-value">{{ stats.processing }}</div>
         </div>
-        <div class="stat-card-value">{{ stats.processing }}</div>
-      </div>
+      </t-col>
 
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <div class="stat-card-icon gray">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
+      <t-col :span="6">
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <div class="stat-card-icon gray">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </div>
+            <span class="stat-card-title">今日新增</span>
           </div>
-          <span class="stat-card-title">今日新增</span>
+          <div class="stat-card-value">{{ stats.today }}</div>
         </div>
-        <div class="stat-card-value">{{ stats.today }}</div>
-      </div>
-    </div>
+      </t-col>
+    </t-row>
 
     <!-- 工具栏 -->
     <div class="toolbar">

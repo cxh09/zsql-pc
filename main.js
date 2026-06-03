@@ -18,21 +18,25 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      webviewTag: true,
-      nativeWindowOpen: false
+      webviewTag: true
     }
   })
 
-  // 允许 webview 页面跨域请求 API
+  // 只对本地 API 请求添加跨域头，不干扰外部网页
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Access-Control-Allow-Origin': ['*'],
-        'Access-Control-Allow-Methods': ['GET, POST, PUT, DELETE, OPTIONS'],
-        'Access-Control-Allow-Headers': ['Content-Type, Authorization']
-      }
-    })
+    const isApiRequest = details.url.includes('/api/') || details.url.includes('localhost')
+    if (isApiRequest) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Access-Control-Allow-Origin': ['*'],
+          'Access-Control-Allow-Methods': ['GET, POST, PUT, DELETE, OPTIONS'],
+          'Access-Control-Allow-Headers': ['Content-Type, Authorization']
+        }
+      })
+    } else {
+      callback({ responseHeaders: details.responseHeaders })
+    }
   })
 
   mainWindow.loadFile('index.html')
@@ -54,6 +58,18 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// 拦截 webview 中 window.open() 新窗口请求，改为在新标签页打开
+app.on('web-contents-created', (event, contents) => {
+  if (contents.getType() === 'webview') {
+    contents.setWindowOpenHandler(({ url }) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('open-new-tab', url)
+      }
+      return { action: 'deny' }
+    })
+  }
 })
 
 // IPC handlers for window controls

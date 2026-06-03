@@ -52,10 +52,25 @@ const App = {
     const tabs = ref([])
     const activeTab = ref(null)
 
-    // 监听 activeTab 变化，强制 webview 重绘
+    // 监听 activeTab 变化，强制 webview 重绘，并滚动标签到可视区域
     // 解决 Electron webview 从 visibility/opacity 切换后内部页面不重新计算尺寸的问题
     watch(activeTab, () => {
       nextTick(() => {
+        // 滚动标签到可视区域
+        const activeTabEl = document.querySelector('.browser-tab.active')
+        if (activeTabEl) {
+          const container = activeTabEl.closest('.browser-tabs')
+          if (container) {
+            const containerRect = container.getBoundingClientRect()
+            const tabRect = activeTabEl.getBoundingClientRect()
+            if (tabRect.right > containerRect.right) {
+              container.scrollLeft += tabRect.right - containerRect.right + 4
+            } else if (tabRect.left < containerRect.left) {
+              container.scrollLeft -= containerRect.left - tabRect.left + 4
+            }
+          }
+        }
+
         const webview = document.querySelector('webview.active')
         if (webview) {
           // 微调 flex 值触发 webview 重排
@@ -71,20 +86,17 @@ const App = {
     const generateTabId = () => `tab_${++tabIdCounter}`
 
     // 打开标签页
-    const openTab = (title, url, icon = 'home') => {
-      // 检查是否已存在相同URL的标签
-      const existingTab = tabs.value.find(tab => tab.url === url)
-      if (existingTab) {
-        activeTab.value = existingTab.id
-        return existingTab.id
-      }
+    const openTab = (title, url, icon = 'home', pageKey) => {
+      // 关闭菜单
+      showMenu.value = false
 
       // 创建新标签
       const newTab = {
         id: generateTabId(),
         title,
         url,
-        icon
+        icon,
+        ...(pageKey && { pageKey })
       }
       tabs.value.push(newTab)
       activeTab.value = newTab.id
@@ -185,15 +197,68 @@ const App = {
       }
     }
 
-    // 检查标签是否已打开
-    const isTabOpen = (url) => {
-      return tabs.value.some(tab => tab.url === url)
+    // 检查标签是否已打开（支持 pageKey 或 URL 匹配）
+    const isTabOpen = (url, pageKey) => {
+      return tabs.value.some(tab => pageKey ? tab.pageKey === pageKey : tab.url === url)
     }
 
     // ========== 浏览器对话框 ==========
     const browserDialog = reactive({
       visible: false,
       url: ''
+    })
+
+    // ========== 浏览器URL输入 ==========
+    const browserInputUrl = ref('https://')
+    const browserSuggestions = ref([])
+    const showBrowserSuggestions = ref(false)
+
+    // 检查是否是浏览器输入页面
+    const isBrowserInputPage = computed(() => {
+      if (!activeTab.value) return false
+      const tab = tabs.value.find(t => t.id === activeTab.value)
+      return tab && tab.url === 'browser://input'
+    })
+
+    // 监听输入变化，更新搜索建议
+    watch(browserInputUrl, (newVal) => {
+      const input = newVal.trim()
+      if (!input || input === 'https://') {
+        browserSuggestions.value = []
+        showBrowserSuggestions.value = false
+        return
+      }
+      
+      // 去掉 https:// 前缀进行判断
+      const cleanInput = input.replace(/^https?:\/\//, '')
+      
+      const suggestions = []
+      const isUrl = isValidUrl(cleanInput)
+      
+      if (isUrl) {
+        // 是网址，提供访问选项
+        let url = cleanInput
+        if (!/^https?:\/\//i.test(input)) {
+          url = 'https://' + cleanInput
+        }
+        suggestions.push({
+          type: 'visit',
+          title: `访问 ${cleanInput}`,
+          url: url,
+          icon: 'globe'
+        })
+      }
+      
+      // 始终提供搜索选项
+      suggestions.push({
+        type: 'search',
+        title: `搜索 "${cleanInput}"`,
+        url: 'https://www.bing.com/search?q=' + encodeURIComponent(cleanInput),
+        icon: 'search'
+      })
+      
+      browserSuggestions.value = suggestions
+      showBrowserSuggestions.value = suggestions.length > 0
     })
 
     // 检查当前是否有浏览器标签页处于激活状态
@@ -203,20 +268,98 @@ const App = {
       return tab && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))
     })
 
+    // 打开浏览器输入页面
     const openBrowserDialog = () => {
-      browserDialog.url = 'https://'
-      browserDialog.visible = true
+      showMenu.value = false
+      browserInputUrl.value = 'https://'
+      openTab('浏览器', 'browser://input', 'home')
     }
 
-    const confirmBrowserUrl = () => {
+    // 判断是否为有效网址
+    const isValidUrl = (str) => {
+      // 检查是否以 http:// 或 https:// 开头
+      if (/^https?:\/\//i.test(str)) {
+        try {
+          new URL(str)
+          return true
+        } catch (e) {
+          return false
+        }
+      }
+      // 检查是否为有效域名（如 baidu.com, www.baidu.com 等）
+      const domainPattern = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/
+      if (domainPattern.test(str.trim())) {
+        return true
+      }
+      // 检查是否为 IP 地址（如 127.0.0.1）
+      const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/
+      if (ipPattern.test(str.trim())) {
+        const parts = str.trim().split('.')
+        return parts.every(part => parseInt(part) <= 255)
+      }
+      return false
+    }
+
+    // 确认浏览器URL并加载
+    const confirmBrowserUrl = (targetUrl) => {
+      const url = targetUrl || browserInputUrl.value.trim()
+      if (!url || url === 'https://') {
+        TDesign.MessagePlugin.warning('请输入网页地址')
+        return
+      }
+      
+      let finalUrl = url
+      let title = '浏览器'
+      try {
+        const urlObj = new URL(finalUrl)
+        title = urlObj.hostname
+      } catch (e) {
+        // 使用默认标题
+      }
+      
+      // 隐藏建议列表
+      showBrowserSuggestions.value = false
+      
+      // 更新当前tab的URL
+      const currentTabId = activeTab.value
+      const tab = tabs.value.find(t => t.id === currentTabId)
+      if (tab) {
+        tab.url = finalUrl
+        tab.title = title
+        // 重新加载webview
+        nextTick(() => {
+          const webview = document.querySelector('.page-webview.active')
+          if (webview) {
+            webview.loadURL(finalUrl)
+          }
+        })
+      }
+    }
+
+    // 选择建议项
+    const selectBrowserSuggestion = (suggestion) => {
+      browserInputUrl.value = suggestion.url
+      confirmBrowserUrl(suggestion.url)
+    }
+
+    // 旧版本兼容 - 保留原函数
+    const confirmBrowserUrlOld = () => {
       const url = browserDialog.url.trim()
       if (!url || url === 'https://') {
         TDesign.MessagePlugin.warning('请输入网页地址')
         return
       }
-      let finalUrl = url
-      if (!/^https?:\/\//i.test(finalUrl)) {
-        finalUrl = 'https://' + finalUrl
+      let finalUrl
+      // 判断是否为网址
+      if (isValidUrl(url)) {
+        // 是网址，直接访问
+        finalUrl = url
+        if (!/^https?:\/\//i.test(finalUrl)) {
+          finalUrl = 'https://' + finalUrl
+        }
+      } else {
+        // 不是网址，使用必应搜索
+        finalUrl = 'https://www.bing.com/search?q=' + encodeURIComponent(url)
       }
       let title = '浏览器'
       try {
@@ -297,15 +440,57 @@ const App = {
     }
 
     const handleLogout = () => {
-      isLoggedIn.value = false
-      tabs.value = []
-      activeTab.value = null
-      formData.username = ''
-      formData.password = ''
-      formData.remember = false
-      showUserMenu.value = false
-      clearCredentials()
-      TDesign.MessagePlugin.info('已退出登录')
+      TDesign.DialogPlugin.confirm({
+        header: '确认退出账号',
+        body: '退出账号后将清除当前登录状态，是否继续？',
+        onConfirm: () => {
+          isLoggedIn.value = false
+          tabs.value = []
+          activeTab.value = null
+          formData.username = ''
+          formData.password = ''
+          formData.remember = false
+          showUserMenu.value = false
+          showMenu.value = false
+          clearCredentials()
+          TDesign.MessagePlugin.info('已退出登录')
+        }
+      })
+    }
+
+    // ========== 菜单 ==========
+    const showMenu = ref(false)
+
+    const toggleMenu = () => {
+      showMenu.value = !showMenu.value
+    }
+
+    // ========== 客户会话二级菜单 ==========
+    const showCustomerSubmenu = ref(false)
+    const showQRCodeDialog = ref(false)
+    let customerSubmenuTimer = null
+
+    const showCustomerSubmenuDelayed = () => {
+      if (customerSubmenuTimer) {
+        clearTimeout(customerSubmenuTimer)
+        customerSubmenuTimer = null
+      }
+      showCustomerSubmenu.value = true
+    }
+
+    const hideCustomerSubmenuDelayed = () => {
+      customerSubmenuTimer = setTimeout(() => {
+        showCustomerSubmenu.value = false
+      }, 200)
+    }
+
+    const openMiniProgramQRCode = () => {
+      showQRCodeDialog.value = true
+      showCustomerSubmenu.value = false
+      if (customerSubmenuTimer) {
+        clearTimeout(customerSubmenuTimer)
+        customerSubmenuTimer = null
+      }
     }
 
     // ========== 用户菜单 ==========
@@ -317,22 +502,23 @@ const App = {
 
     const openAccountInfo = () => {
       showUserMenu.value = false
-      openTab('账户信息', './pages/settings.html', 'settings')
+      showMenu.value = false
+      openTab('账户信息', './pages/settings.html', 'settings', 'settings')
       TDesign.MessagePlugin.info('账户信息页面')
     }
 
     const openUserSettings = () => {
       showUserMenu.value = false
-      openTab('系统设置', './pages/settings.html', 'settings')
+      showMenu.value = false
+      openTab('系统设置', './pages/settings.html', 'settings', 'settings')
     }
 
-    // 点击页面空白处关闭用户菜单
+    // 点击页面空白处关闭菜单
     const handleClickOutside = (e) => {
-      if (showUserMenu.value) {
-        const sidebar = document.querySelector('.sidebar')
-        if (sidebar && !sidebar.contains(e.target)) {
-          showUserMenu.value = false
-        }
+      const sidebar = document.querySelector('.sidebar')
+      if (sidebar && !sidebar.contains(e.target)) {
+        showUserMenu.value = false
+        showMenu.value = false
       }
     }
 
@@ -387,9 +573,14 @@ const App = {
       closeTab,
       isTabOpen,
       isBrowserTabActive,
+      isBrowserInputPage,
       browserDialog,
+      browserInputUrl,
+      browserSuggestions,
+      showBrowserSuggestions,
       openBrowserDialog,
       confirmBrowserUrl,
+      selectBrowserSuggestion,
       refreshActiveTab,
 
       // 窗口控制
@@ -397,15 +588,27 @@ const App = {
       maximizeWindow,
       closeWindow,
 
+      // 菜单
+      showMenu,
+      toggleMenu,
+
       // 用户菜单
       showUserMenu,
       toggleUserMenu,
       openAccountInfo,
-      openUserSettings
+      openUserSettings,
+
+      // 客户会话
+      showCustomerSubmenu,
+      showQRCodeDialog,
+      openMiniProgramQRCode,
+      showCustomerSubmenuDelayed,
+      hideCustomerSubmenuDelayed
     }
   }
 }
 
 const app = createApp(App)
 app.use(TDesign)
+app.config.compilerOptions.isCustomElement = (tag) => tag === 'webview'
 app.mount('#app')

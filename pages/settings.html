@@ -264,97 +264,9 @@
             <div class="user-avatar-large">管</div>
             <div class="user-profile-info">
               <div class="user-profile-name">管理员</div>
-              <div class="user-profile-role">超级管理员 · 免费版</div>
+              <div class="user-profile-role">超级管理员</div>
             </div>
             <t-button theme="primary" variant="outline" size="small">修改资料</t-button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 外观设置 -->
-      <div class="settings-card">
-        <div class="settings-card-header">
-          <div class="settings-card-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-          </div>
-          <div>
-            <div class="settings-card-title">外观设置</div>
-            <div class="settings-card-subtitle">自定义界面显示</div>
-          </div>
-        </div>
-        <div class="settings-card-body">
-          <div class="setting-item">
-            <div class="setting-info">
-              <div class="setting-label">深色模式</div>
-              <div class="setting-desc">切换深色/浅色主题</div>
-            </div>
-            <div class="setting-control">
-              <t-switch v-model="darkMode" @change="toggleTheme"></t-switch>
-            </div>
-          </div>
-          <div class="setting-item">
-            <div class="setting-info">
-              <div class="setting-label">紧凑模式</div>
-              <div class="setting-desc">减小界面元素间距</div>
-            </div>
-            <div class="setting-control">
-              <t-switch v-model="compactMode"></t-switch>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 通知设置 -->
-      <div class="settings-card">
-        <div class="settings-card-header">
-          <div class="settings-card-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-          </div>
-          <div>
-            <div class="settings-card-title">通知设置</div>
-            <div class="settings-card-subtitle">管理通知提醒</div>
-          </div>
-        </div>
-        <div class="settings-card-body">
-          <div class="setting-item">
-            <div class="setting-info">
-              <div class="setting-label">新预约提醒</div>
-              <div class="setting-desc">收到新预约时发送通知</div>
-            </div>
-            <div class="setting-control">
-              <t-switch v-model="notification.newAppointment" :customValue="[true, false]"></t-switch>
-            </div>
-          </div>
-          <div class="setting-item">
-            <div class="setting-info">
-              <div class="setting-label">系统消息</div>
-              <div class="setting-desc">接收系统更新和重要通知</div>
-            </div>
-            <div class="setting-control">
-              <t-switch v-model="notification.systemMessage" :customValue="[true, false]"></t-switch>
-            </div>
-          </div>
-          <div class="setting-item">
-            <div class="setting-info">
-              <div class="setting-label">声音提醒</div>
-              <div class="setting-desc">通知时播放提示音</div>
-            </div>
-            <div class="setting-control">
-              <t-switch v-model="notification.sound" :customValue="[true, false]"></t-switch>
-            </div>
           </div>
         </div>
       </div>
@@ -429,10 +341,13 @@
               </svg>
             </div>
             <div class="about-name">智拾清澜工作台</div>
-            <div class="about-version">版本 1.0.0 (免费版)</div>
+            <div class="about-version">版本 1.0.0</div>
             <div class="about-desc">
               智拾清澜工作台是一款专业的打捞服务管理工具，<br>
               帮助您高效管理预约订单、客户信息和服务记录。
+            </div>
+            <div class="about-developer" style="margin-top: 12px; font-size: 12px; color: #999;">
+              开发者：Github@cxh09，创客社24届学生cxh制作
             </div>
             <div class="about-links">
               <span class="about-link" @click="openLink('help')">使用帮助</span>
@@ -452,15 +367,6 @@
 
     const App = {
       setup() {
-        const darkMode = ref(false);
-        const compactMode = ref(false);
-
-        const notification = reactive({
-          newAppointment: true,
-          systemMessage: true,
-          sound: false
-        });
-
         const autoRefresh = reactive({
           enabled: false,
           interval: 60
@@ -472,15 +378,7 @@
           if (saved) {
             try {
               const settings = JSON.parse(saved);
-              darkMode.value = settings.darkMode || false;
-              compactMode.value = settings.compactMode || false;
-              Object.assign(notification, settings.notification || {});
               Object.assign(autoRefresh, settings.autoRefresh || {});
-              
-              // 应用主题
-              if (darkMode.value) {
-                document.documentElement.classList.add('tdesign-theme__dark');
-              }
             } catch (e) {
               console.error('加载设置失败:', e);
             }
@@ -490,23 +388,9 @@
         // 保存设置
         const saveSettings = () => {
           const settings = {
-            darkMode: darkMode.value,
-            compactMode: compactMode.value,
-            notification: { ...notification },
             autoRefresh: { ...autoRefresh }
           };
           localStorage.setItem('appSettings', JSON.stringify(settings));
-        };
-
-        // 切换主题
-        const toggleTheme = (val) => {
-          if (val) {
-            document.documentElement.classList.add('tdesign-theme__dark');
-          } else {
-            document.documentElement.classList.remove('tdesign-theme__dark');
-          }
-          saveSettings();
-          TDesign.MessagePlugin.success(val ? '已切换到深色模式' : '已切换到浅色模式');
         };
 
         // 清除缓存
@@ -559,11 +443,7 @@
         });
 
         return {
-          darkMode,
-          compactMode,
-          notification,
           autoRefresh,
-          toggleTheme,
           clearCache,
           exportData,
           openLink,

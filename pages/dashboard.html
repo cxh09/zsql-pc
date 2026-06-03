@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>主页 - 智拾清澜工作台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tdesign-vue-next/dist/tdesign.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--td-bg-color-page);
+      padding: 24px;
+    }
+
+    #app {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    .page-header p {
+      font-size: 14px;
+      color: var(--td-text-color-secondary);
+      margin-top: 4px;
+    }
+
+    /* 欢迎卡片 */
+    .welcome-card {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border-radius: 12px;
+      padding: 32px 40px;
+      color: white;
+      margin-bottom: 24px;
+    }
+
+    .welcome-card h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .welcome-card p {
+      font-size: 14px;
+      opacity: 0.85;
+      margin-bottom: 24px;
+    }
+
+    .welcome-stats {
+      display: flex;
+      gap: 48px;
+    }
+
+    .welcome-stats .stat-number {
+      font-size: 26px;
+      font-weight: 700;
+      display: block;
+    }
+
+    .welcome-stats .stat-label {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    /* 统计卡片网格 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--td-bg-color-container);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--td-border-level-1-color);
+    }
+
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .stat-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-card-icon.blue {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+
+    .stat-card-icon.green {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+    }
+
+    .stat-card-icon.orange {
+      background: rgba(249, 115, 22, 0.1);
+      color: #f97316;
+    }
+
+    .stat-card-icon.purple {
+      background: rgba(168, 85, 247, 0.1);
+      color: #a855f7;
+    }
+
+    .stat-card-title {
+      font-size: 14px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .stat-card-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    .stat-card-trend {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .stat-card-trend.up {
+      color: #22c55e;
+    }
+
+    .stat-card-trend.down {
+      color: #ef4444;
+    }
+
+    /* 内容区域 */
+
+    .content-card {
+      background: var(--td-bg-color-container);
+      border-radius: 8px;
+      border: 1px solid var(--td-border-level-1-color);
+      overflow: hidden;
+    }
+
+    .content-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--td-border-level-1-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .content-card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    .content-card-body {
+      padding: 0;
+    }
+
+    /* 预约列表 */
+    .appointment-list {
+      list-style: none;
+    }
+
+    .appointment-item {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--td-border-level-1-color);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: background-color 0.2s;
+    }
+
+    .appointment-item:last-child {
+      border-bottom: none;
+    }
+
+    .appointment-item:hover {
+      background: var(--td-bg-color-secondarycontainer);
+    }
+
+    .appointment-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .appointment-status.pending {
+      background: #f97316;
+    }
+
+    .appointment-status.processing {
+      background: #3b82f6;
+    }
+
+    .appointment-status.completed {
+      background: #22c55e;
+    }
+
+    .appointment-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .appointment-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--td-text-color-primary);
+      margin-bottom: 4px;
+    }
+
+    .appointment-detail {
+      font-size: 12px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .appointment-time {
+      font-size: 12px;
+      color: var(--td-text-color-placeholder);
+      white-space: nowrap;
+    }
+
+    /* 快捷操作 */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding: 20px;
+    }
+
+    .quick-action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid var(--td-border-level-1-color);
+      background: var(--td-bg-color-container);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .quick-action-btn:hover {
+      background: var(--td-bg-color-secondarycontainer);
+      border-color: var(--td-brand-color);
+    }
+
+    .quick-action-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--td-bg-color-secondarycontainer);
+    }
+
+    .quick-action-btn:hover .quick-action-icon {
+      background: var(--td-brand-color-light);
+    }
+
+    .quick-action-text {
+      font-size: 13px;
+      color: var(--td-text-color-primary);
+    }
+
+    /* 深色模式适配 */
+    .tdesign-theme__dark .welcome-card {
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    }
+
+    /* 响应式 */
+    @media (max-width: 1200px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="page-header">
+      <h1>欢迎使用智拾清澜工作台</h1>
+      <p>今天是 {{ today }}，以下是您的数据概览</p>
+    </div>
+
+    <!-- 欢迎卡片 -->
+    <div class="welcome-card">
+      <h2>👋 下午好，管理员</h2>
+      <p>您有 {{ pendingCount }} 个待处理的预约申请需要审核</p>
+      <div class="welcome-stats">
+        <div>
+          <span class="stat-number">{{ stats.total }}</span>
+          <span class="stat-label">总预约数</span>
+        </div>
+        <div>
+          <span class="stat-number">{{ stats.today }}</span>
+          <span class="stat-label">今日新增</span>
+        </div>
+        <div>
+          <span class="stat-number">{{ stats.pending }}</span>
+          <span class="stat-label">待处理</span>
+        </div>
+        <div>
+          <span class="stat-number">{{ stats.completed }}</span>
+          <span class="stat-label">已完成</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <div class="stat-card-icon blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <span class="stat-card-title">今日预约</span>
+        </div>
+        <div class="stat-card-value">{{ stats.today }}</div>
+        <div class="stat-card-trend up">↑ 12% 较昨日</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <div class="stat-card-icon orange">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <span class="stat-card-title">待处理</span>
+        </div>
+        <div class="stat-card-value">{{ stats.pending }}</div>
+        <div class="stat-card-trend down">↑ 5 个新增</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <div class="stat-card-icon green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <span class="stat-card-title">已完成</span>
+        </div>
+        <div class="stat-card-value">{{ stats.completed }}</div>
+        <div class="stat-card-trend up">↑ 8% 较上周</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <div class="stat-card-icon purple">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <span class="stat-card-title">客户总数</span>
+        </div>
+        <div class="stat-card-value">{{ stats.customers }}</div>
+        <div class="stat-card-trend up">↑ 3 个新增</div>
+      </div>
+    </div>
+
+    <!-- 内容区域 -->
+    <div class="content-grid">
+      <!-- 最新预约 -->
+      <div class="content-card">
+        <div class="content-card-header">
+          <span class="content-card-title">最新预约</span>
+          <t-button theme="primary" variant="text" size="small" @click="viewAll">查看全部</t-button>
+        </div>
+        <div class="content-card-body">
+          <ul class="appointment-list">
+            <li v-for="item in recentAppointments" :key="item.id" class="appointment-item">
+              <span class="appointment-status" :class="item.statusClass"></span>
+              <div class="appointment-info">
+                <div class="appointment-name">{{ item.name }} - {{ item.location }}</div>
+                <div class="appointment-detail">{{ item.phone }} · 预估 {{ item.weight }}kg</div>
+              </div>
+              <span class="appointment-time">{{ item.time }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 快捷操作 -->
+      <div class="content-card">
+        <div class="content-card-header">
+          <span class="content-card-title">快捷操作</span>
+        </div>
+        <div class="content-card-body">
+          <div class="quick-actions">
+            <div class="quick-action-btn" @click="openApplications">
+              <div class="quick-action-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <span class="quick-action-text">预约查看</span>
+            </div>
+
+            <div class="quick-action-btn" @click="openSettings">
+              <div class="quick-action-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </div>
+              <span class="quick-action-text">系统设置</span>
+            </div>
+
+            <div class="quick-action-btn" @click="refreshData">
+              <div class="quick-action-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+              </div>
+              <span class="quick-action-text">刷新数据</span>
+            </div>
+
+            <div class="quick-action-btn" @click="exportData">
+              <div class="quick-action-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </div>
+              <span class="quick-action-text">导出报表</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tdesign-vue-next/dist/tdesign.min.js"></script>
+  <script>
+    const { createApp, ref, computed } = Vue;
+
+    const App = {
+      setup() {
+        const today = ref(new Date().toLocaleDateString('zh-CN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          weekday: 'long'
+        }));
+
+        const stats = ref({
+          total: 128,
+          today: 12,
+          pending: 8,
+          completed: 96,
+          customers: 86
+        });
+
+        const pendingCount = computed(() => stats.value.pending);
+
+        const recentAppointments = ref([
+          { id: 1, name: '张建国', phone: '138****5678', location: '长江入海口东侧水域', weight: '850', time: '09:30', statusClass: 'pending' },
+          { id: 2, name: '李明辉', phone: '159****2341', location: '珠江口航道附近', weight: '1200', time: '10:15', statusClass: 'processing' },
+          { id: 3, name: '王大海', phone: '177****8902', location: '舟山群岛北侧海域', weight: '2000', time: '11:00', statusClass: 'processing' },
+          { id: 4, name: '赵远洋', phone: '136****4567', location: '渤海湾天津港外', weight: '600', time: '14:30', statusClass: 'completed' },
+          { id: 5, name: '陈航海', phone: '150****6789', location: '厦门湾外海', weight: '1500', time: '16:00', statusClass: 'completed' }
+        ]);
+
+        const viewAll = () => {
+          if (window.electronAPI?.openTab) {
+            window.electronAPI.openTab('预约查看', './pages/applications.html');
+          }
+        };
+
+        const openApplications = () => {
+          if (window.electronAPI?.openTab) {
+            window.electronAPI.openTab('预约查看', './pages/applications.html');
+          }
+        };
+
+        const openSettings = () => {
+          if (window.electronAPI?.openTab) {
+            window.electronAPI.openTab('系统设置', './pages/settings.html');
+          }
+        };
+
+        const refreshData = () => {
+          TDesign.MessagePlugin.success('数据已刷新');
+        };
+
+        const exportData = () => {
+          TDesign.MessagePlugin.success('报表导出成功');
+        };
+
+        return {
+          today,
+          stats,
+          pendingCount,
+          recentAppointments,
+          viewAll,
+          openApplications,
+          openSettings,
+          refreshData,
+          exportData
+        };
+      }
+    };
+
+    const app = createApp(App);
+    app.use(TDesign);
+    app.mount('#app');
+  </script>
+</body>
+</html>

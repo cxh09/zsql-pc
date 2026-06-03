@@ -20,11 +20,11 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "electron": "^42.3.1",
     "tdesign-vue-next": "^1.20.0",
     "vue": "^3.5.35"
   },
   "devDependencies": {
+    "electron": "^42.3.1",
     "electron-builder": "^25.1.8"
   },
   "build": {
@@ -41,8 +41,7 @@
       "node_modules/**/*"
     ],
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": "nsis"
     },
     "mac": {
       "target": "dmg",

@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>预约查看 - 智拾清澜工作台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tdesign-vue-next/dist/tdesign.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--td-bg-color-page);
+      padding: 24px;
+    }
+
+    #app {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+      flex-shrink: 0;
+    }
+
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    .page-header p {
+      font-size: 14px;
+      color: var(--td-text-color-secondary);
+      margin-top: 4px;
+    }
+
+    /* 统计卡片 */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-shrink: 0;
+    }
+
+    .stat-card {
+      background: var(--td-bg-color-container);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--td-border-level-1-color);
+    }
+
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .stat-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-card-icon.blue {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+
+    .stat-card-icon.green {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+    }
+
+    .stat-card-icon.orange {
+      background: rgba(249, 115, 22, 0.1);
+      color: #f97316;
+    }
+
+    .stat-card-icon.gray {
+      background: rgba(107, 114, 128, 0.1);
+      color: #6b7280;
+    }
+
+    .stat-card-title {
+      font-size: 14px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .stat-card-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    /* 搜索和操作栏 */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+
+    /* 表格容器 */
+    .table-container {
+      background: var(--td-bg-color-container);
+      border-radius: 8px;
+      border: 1px solid var(--td-border-level-1-color);
+      overflow: auto;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .table-container .loading-state,
+    .table-container .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .custom-table th,
+    .custom-table td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--td-border-level-1-color);
+    }
+
+    .custom-table th {
+      background: var(--td-bg-color-secondarycontainer);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--td-text-color-secondary);
+    }
+
+    .custom-table td {
+      font-size: 14px;
+      color: var(--td-text-color-primary);
+    }
+
+    .custom-table tbody tr:hover {
+      background: var(--td-bg-color-secondarycontainer);
+    }
+
+    .custom-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* 状态标签 */
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-tag::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .status-tag.pending {
+      background: rgba(249, 115, 22, 0.1);
+      color: #f97316;
+    }
+
+    .status-tag.pending::before {
+      background: #f97316;
+    }
+
+    .status-tag.processing {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+
+    .status-tag.processing::before {
+      background: #3b82f6;
+    }
+
+    .status-tag.completed {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+    }
+
+    .status-tag.completed::before {
+      background: #22c55e;
+    }
+
+    /* 操作按钮 */
+    .action-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .action-btn.view {
+      background: var(--td-brand-color-light);
+      color: var(--td-brand-color);
+    }
+
+    .action-btn.view:hover {
+      background: var(--td-brand-color);
+      color: white;
+    }
+
+    .action-btn.process {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+    }
+
+    .action-btn.process:hover {
+      background: #22c55e;
+      color: white;
+    }
+
+    /* 分页 */
+    .pagination-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-top: 1px solid var(--td-border-level-1-color);
+    }
+
+    .pagination-info {
+      font-size: 14px;
+      color: var(--td-text-color-secondary);
+    }
+
+    /* 加载状态 */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--td-border-level-2-color);
+      border-top-color: var(--td-brand-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 空状态 */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    /* 详情弹窗 - 图片/视频 */
+    .media-gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .media-item {
+      width: 120px;
+      height: 120px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--td-border-level-1-color);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s;
+    }
+
+    .media-item:hover {
+      transform: scale(1.05);
+    }
+
+    .media-item img,
+    .media-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .media-item .video-badge {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* 大图预览遮罩 */
+    .preview-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .preview-overlay img,
+    .preview-overlay video {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+
+    .preview-close {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      color: white;
+      font-size: 32px;
+      cursor: pointer;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      transition: background 0.2s;
+      z-index: 10000;
+    }
+
+    .preview-close:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* 响应式 */
+    @media (max-width: 1200px) {
+      .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 大图/视频预览 -->
+    <div v-if="previewUrl" class="preview-overlay" @click="previewUrl = ''">
+      <div class="preview-close" @click.stop="previewUrl = ''">&times;</div>
+      <img v-if="previewIsImage" :src="previewUrl" @click.stop />
+      <video v-else :src="previewUrl" controls autoplay @click.stop style="max-width:90vw;max-height:90vh;border-radius:8px;"></video>
+    </div>
+
+    <div class="page-header">
+      <h1>预约查看</h1>
+      <p>管理和查看所有打捞服务预约申请</p>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <div class="stat-card-icon blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+          </div>
+          <span class="stat-card-title">全部预约</span>
+        </div>
+        <div class="stat-card-value">{{ stats.total }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <div class="stat-card-icon orange">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <span class="stat-card-title">待处理</span>
+        </div>
+        <div class="stat-card-value">{{ stats.pending }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <div class="stat-card-icon green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <span class="stat-card-title">处理中</span>
+        </div>
+        <div class="stat-card-value">{{ stats.processing }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <div class="stat-card-icon gray">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <span class="stat-card-title">今日新增</span>
+        </div>
+        <div class="stat-card-value">{{ stats.today }}</div>
+      </div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="toolbar">
+      <div class="search-box">
+        <t-input
+          v-model="searchKeyword"
+          placeholder="搜索姓名、电话或位置"
+          clearable
+          style="width: 300px"
+        >
+          <template #prefix-icon>
+            <t-icon name="search" />
+          </template>
+        </t-input>
+        <t-select v-model="filterStatus" placeholder="全部状态" style="width: 120px">
+          <t-option value="" label="全部状态"></t-option>
+          <t-option value="pending" label="待处理"></t-option>
+          <t-option value="processing" label="处理中"></t-option>
+          <t-option value="completed" label="已完成"></t-option>
+        </t-select>
+        <t-button theme="primary" @click="fetchData">
+          <template #icon><t-icon name="refresh" /></template>
+          刷新
+        </t-button>
+      </div>
+      <t-button theme="primary" variant="outline" @click="exportData">
+        <template #icon><t-icon name="download" /></template>
+        导出数据
+      </t-button>
+    </div>
+
+    <!-- 表格 -->
+    <div class="table-container">
+      <div v-if="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <span>正在加载数据...</span>
+      </div>
+
+      <div v-else-if="filteredData.length === 0" class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="9" y1="9" x2="15" y2="9"></line>
+          <line x1="9" y1="13" x2="15" y2="13"></line>
+          <line x1="9" y1="17" x2="11" y2="17"></line>
+        </svg>
+        <span>暂无预约数据</span>
+      </div>
+
+      <table v-else class="custom-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>姓名</th>
+            <th>联系电话</th>
+            <th>物品类型</th>
+            <th>打捞位置</th>
+            <th>预约时间</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in pagedData" :key="item.id">
+            <td>#{{ item.id }}</td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.phone }}</td>
+            <td>{{ item.itemType || '-' }}</td>
+            <td :title="item.location">{{ truncate(item.location, 20) }}</td>
+            <td>{{ item.date }} {{ item.time }}</td>
+            <td>
+              <span class="status-tag" :class="getStatusClass(item)">
+                {{ getStatusText(item) }}
+              </span>
+            </td>
+            <td>
+              <div class="action-btns">
+                <button class="action-btn view" @click="viewDetail(item)">查看</button>
+                <button v-if="item.status === 'pending'" class="action-btn process" @click="processItem(item)">处理</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 分页 -->
+      <div class="pagination-wrapper">
+        <span class="pagination-info">共 {{ filteredData.length }} 条记录，第 {{ currentPage }} / {{ totalPages }} 页</span>
+        <t-pagination
+          v-model="currentPage"
+          :total="filteredData.length"
+          :page-size="pageSize"
+          :page-size-options="[10, 20, 50]"
+          show-jumper
+          show-sizer
+          @change="onPageChange"
+        />
+      </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <t-dialog
+      v-model:visible="detailVisible"
+      header="预约详情"
+      width="640px"
+      :footer="false"
+      @close="onDetailClose"
+    >
+      <div v-if="selectedItem" style="padding: 8px 0;">
+        <t-descriptions :column="2" bordered>
+          <t-descriptions-item label="预约ID">#{{ selectedItem.id }}</t-descriptions-item>
+          <t-descriptions-item label="客户姓名">{{ selectedItem.name }}</t-descriptions-item>
+          <t-descriptions-item label="联系电话">{{ selectedItem.phone }}</t-descriptions-item>
+          <t-descriptions-item label="物品类型">{{ selectedItem.itemType || '-' }}</t-descriptions-item>
+          <t-descriptions-item label="预约日期">{{ selectedItem.date }}</t-descriptions-item>
+          <t-descriptions-item label="预约时间">{{ selectedItem.time }}</t-descriptions-item>
+          <t-descriptions-item label="打捞位置" :span="2">{{ selectedItem.location }}</t-descriptions-item>
+          <t-descriptions-item label="详细描述" :span="2">{{ selectedItem.description || '暂无描述' }}</t-descriptions-item>
+          <t-descriptions-item label="提交时间" :span="2">{{ formatDate(selectedItem.created_at) }}</t-descriptions-item>
+        </t-descriptions>
+
+        <!-- 图片展示 -->
+        <div v-if="selectedItem.images && selectedItem.images.length > 0" style="margin-top: 20px;">
+          <div style="font-size:14px;font-weight:600;color:var(--td-text-color-primary);margin-bottom:10px;">
+            上传图片 ({{ selectedItem.images.length }})
+          </div>
+          <div class="media-gallery">
+            <div
+              v-for="(img, idx) in selectedItem.images"
+              :key="'img-' + idx"
+              class="media-item"
+              @click="openPreview(imgUrl(img))"
+            >
+              <img :src="imgUrl(img)" :alt="'图片' + (idx + 1)" loading="lazy" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 视频展示 -->
+        <div v-if="selectedItem.videos && selectedItem.videos.length > 0" style="margin-top: 20px;">
+          <div style="font-size:14px;font-weight:600;color:var(--td-text-color-primary);margin-bottom:10px;">
+            上传视频 ({{ selectedItem.videos.length }})
+          </div>
+          <div class="media-gallery">
+            <div
+              v-for="(video, idx) in selectedItem.videos"
+              :key="'video-' + idx"
+              class="media-item"
+              @click="openPreview(videoUrl(video))"
+            >
+              <video :src="videoUrl(video)" muted preload="metadata"></video>
+              <span class="video-badge">&#9654; 视频</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </t-dialog>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tdesign-vue-next/dist/tdesign.min.js"></script>
+  <script>
+    const { createApp, ref, computed, onMounted, watch } = Vue;
+
+    const API_BASE = 'http://zsql.2gck.xyz:8080';
+
+    const App = {
+      setup() {
+        const loading = ref(false);
+        const searchKeyword = ref('');
+        const filterStatus = ref('');
+        const currentPage = ref(1);
+        const pageSize = ref(10);
+        const detailVisible = ref(false);
+        const selectedItem = ref(null);
+        const previewUrl = ref('');
+
+        const stats = ref({
+          total: 0,
+          pending: 0,
+          processing: 0,
+          completed: 0,
+          today: 0
+        });
+
+        const tableData = ref([]);
+
+        // 构建完整图片URL
+        const imgUrl = (path) => {
+          if (!path) return '';
+          if (path.startsWith('http')) return path;
+          return API_BASE + path;
+        };
+
+        // 构建完整视频URL
+        const videoUrl = (path) => {
+          if (!path) return '';
+          if (path.startsWith('http')) return path;
+          return API_BASE + path;
+        };
+
+        // 预览是否图片
+        const previewIsImage = computed(() => {
+          if (!previewUrl.value) return true;
+          return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(previewUrl.value);
+        });
+
+        // 打开预览
+        const openPreview = (url) => {
+          previewUrl.value = url;
+        };
+
+        // 从API获取数据
+        const fetchData = async () => {
+          loading.value = true;
+          try {
+            const response = await fetch(`${API_BASE}/form/submissions`);
+            const result = await response.json();
+
+            if (result.code === 200 && Array.isArray(result.data)) {
+              tableData.value = result.data.map(item => ({
+                ...item,
+                // 新提交默认状态为 'pending'，用户可手动切换
+                status: item.status || 'pending'
+              }));
+              currentPage.value = 1;
+              updateStats();
+            } else {
+              TDesign.MessagePlugin.error('获取数据失败');
+            }
+          } catch (error) {
+            console.error('获取数据失败:', error);
+            TDesign.MessagePlugin.error('网络请求失败，请检查网络连接');
+            useMockData();
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        // 模拟数据（API失败时使用）
+        const useMockData = () => {
+          tableData.value = [
+            {
+              id: 1, name: '1618', phone: '16484484848',
+              location: '广东省深圳市南山区创科路221号靠近深圳市第二高级中学',
+              itemType: '手机', date: '2026-06-03', time: '13:16',
+              description: '64646664', created_at: '2026-06-03T13:16:41.929950',
+              status: 'pending'
+            },
+            {
+              id: 2, name: '陈欣航', phone: '15768110256',
+              location: '广东省深圳市南山区创科路221号靠近深圳市第二高级中学',
+              itemType: '手机', date: '2026-06-03', time: '13:20',
+              description: '人类碎片来了', created_at: '2026-06-03T13:20:53.464233',
+              status: 'pending'
+            },
+            {
+              id: 3, name: 'cxh', phone: '15768110256',
+              location: '广东省深圳市南山区创科路221号靠近深圳市第二高级中学',
+              itemType: '手机', date: '2026-06-03', time: '13:40',
+              description: '人类',
+              images: ['/uploads/4351a5d56c3c46eab7191f19335087f9.jpg'],
+              videos: ['/uploads/50686c044c744949b13d869f2e928d3e.mp4'],
+              created_at: '2026-06-03T13:44:45.261916',
+              status: 'pending'
+            }
+          ];
+          currentPage.value = 1;
+          updateStats();
+        };
+
+        // 更新统计数据
+        const updateStats = () => {
+          const today = new Date().toISOString().split('T')[0];
+          stats.value = {
+            total: tableData.value.length,
+            pending: tableData.value.filter(item => item.status === 'pending').length,
+            processing: tableData.value.filter(item => item.status === 'processing').length,
+            completed: tableData.value.filter(item => item.status === 'completed').length,
+            today: tableData.value.filter(item => item.date === today).length
+          };
+        };
+
+        // 过滤后的数据
+        const filteredData = computed(() => {
+          let result = tableData.value;
+
+          // 关键词搜索（空安全）
+          if (searchKeyword.value) {
+            const keyword = searchKeyword.value.toLowerCase();
+            result = result.filter(item =>
+              (item.name || '').toLowerCase().includes(keyword) ||
+              (item.phone || '').includes(keyword) ||
+              (item.location || '').toLowerCase().includes(keyword)
+            );
+          }
+
+          // 状态过滤
+          if (filterStatus.value) {
+            result = result.filter(item => item.status === filterStatus.value);
+          }
+
+          return result;
+        });
+
+        // 分页后的数据
+        const pagedData = computed(() => {
+          const start = (currentPage.value - 1) * pageSize.value;
+          const end = start + pageSize.value;
+          return filteredData.value.slice(start, end);
+        });
+
+        // 总页数
+        const totalPages = computed(() => {
+          return Math.max(1, Math.ceil(filteredData.value.length / pageSize.value));
+        });
+
+        // 分页变化事件
+        const onPageChange = (pageInfo) => {
+          currentPage.value = pageInfo.current || pageInfo.currentPage || 1;
+          pageSize.value = pageInfo.pageSize || 10;
+        };
+
+        // 当搜索关键词或过滤条件变化时，重置到第一页
+        watch([searchKeyword, filterStatus], () => {
+          currentPage.value = 1;
+        });
+
+        // 获取状态样式类
+        const getStatusClass = (item) => {
+          return item.status || 'pending';
+        };
+
+        // 获取状态文本
+        const getStatusText = (item) => {
+          const statusMap = {
+            pending: '待处理',
+            processing: '处理中',
+            completed: '已完成'
+          };
+          return statusMap[item.status] || '待处理';
+        };
+
+        // 截断文本
+        const truncate = (text, length) => {
+          if (!text) return '-';
+          return text.length > length ? text.substring(0, length) + '...' : text;
+        };
+
+        // 格式化日期
+        const formatDate = (dateStr) => {
+          if (!dateStr) return '-';
+          const date = new Date(dateStr);
+          return date.toLocaleString('zh-CN');
+        };
+
+        // 查看详情
+        const viewDetail = (item) => {
+          selectedItem.value = item;
+          detailVisible.value = true;
+        };
+
+        // 关闭详情
+        const onDetailClose = () => {
+          selectedItem.value = null;
+        };
+
+        // 处理预约（待处理 -> 处理中）
+        const processItem = (item) => {
+          item.status = 'processing';
+          updateStats();
+          TDesign.MessagePlugin.success(`已开始处理 ${item.name} 的预约`);
+        };
+
+        // 导出数据
+        const exportData = () => {
+          const dataStr = JSON.stringify(tableData.value, null, 2);
+          const blob = new Blob([dataStr], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `预约数据_${new Date().toISOString().split('T')[0]}.json`;
+          link.click();
+          URL.revokeObjectURL(url);
+          TDesign.MessagePlugin.success('数据导出成功');
+        };
+
+        onMounted(() => {
+          fetchData();
+        });
+
+        return {
+          loading,
+          searchKeyword,
+          filterStatus,
+          currentPage,
+          pageSize,
+          detailVisible,
+          selectedItem,
+          stats,
+          filteredData,
+          pagedData,
+          totalPages,
+          previewUrl,
+          previewIsImage,
+          imgUrl,
+          videoUrl,
+          openPreview,
+          fetchData,
+          onPageChange,
+          getStatusClass,
+          getStatusText,
+          truncate,
+          formatDate,
+          viewDetail,
+          onDetailClose,
+          processItem,
+          exportData
+        };
+      }
+    };
+
+    const app = createApp(App);
+    app.use(TDesign);
+    app.mount('#app');
+  </script>
+</body>
+</html>

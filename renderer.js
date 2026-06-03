@@ -1,92 +1,163 @@
-const { createApp, ref, reactive, computed, watch } = Vue
+const { createApp, ref, reactive, computed } = Vue
 
 const App = {
   setup() {
+    // ========== 登录相关 ==========
     const isLoggedIn = ref(false)
     const loading = ref(false)
     const showQRCode = ref(false)
-    const themeMode = ref('light')
     const formData = reactive({
       username: '',
       password: '',
       remember: false
     })
 
-    let tabId = 0
-    const tabValue = ref('')
-    const tabData = ref([])
-    const browserUrls = reactive({})
-    const browserInputUrl = ref('')
-
-    const addTab = (label) => {
-      const value = `tab_${tabId++}`
-      tabData.value.push({
-        value,
-        label,
-        removable: true
-      })
-      tabValue.value = value
-      return value
-    }
-
-    const addBrowserTab = () => {
-      const value = `tab_${tabId++}`
-      tabData.value.push({
-        value,
-        label: '浏览器',
-        removable: true,
-        isBrowser: true
-      })
-      browserUrls[value] = ''
-      tabValue.value = value
-      browserInputUrl.value = ''
-      return value
-    }
-
-    const navigateToUrl = () => {
-      if (!tabValue.value) return
-      let url = browserInputUrl.value.trim()
-      if (!url) return
-      if (!/^https?:\/\//i.test(url)) {
-        url = 'https://' + url
-      }
-      browserUrls[tabValue.value] = url
-    }
-
-    const ensureTab = (label) => {
-      const exists = tabData.value.find(t => t.label === label)
-      if (exists) {
-        tabValue.value = exists.value
-        return exists.value
-      }
-      return addTab(label)
-    }
-
-    const removeTab = ({ value, index }) => {
-      if (index < 0) return false
-      tabData.value.splice(index, 1)
-      if (tabData.value.length === 0) {
-        tabValue.value = ''
-        return
-      }
-      if (tabValue.value === value) {
-        tabValue.value = tabData.value[Math.max(index - 1, 0)].value
+    // 加载保存的账号信息
+    const loadSavedCredentials = () => {
+      const saved = localStorage.getItem('savedCredentials')
+      if (saved) {
+        try {
+          const { username, password } = JSON.parse(saved)
+          formData.username = username || ''
+          formData.password = password || ''
+          formData.remember = !!(username || password)
+        } catch (e) {
+          // ignore parse errors
+        }
       }
     }
 
-    const handleMenuClick = (value) => {
-      const labelMap = {
-        dashboard: '概况',
-        applications: '预约表单',
-        statistics: '数据统计',
-        settings: '系统设置'
+    // 保存账号信息到 localStorage
+    const saveCredentials = () => {
+      if (formData.remember) {
+        localStorage.setItem('savedCredentials', JSON.stringify({
+          username: formData.username,
+          password: formData.password
+        }))
+      } else {
+        localStorage.removeItem('savedCredentials')
       }
-      ensureTab(labelMap[value] || value)
     }
 
+    // 清除保存的账号信息
+    const clearCredentials = () => {
+      localStorage.removeItem('savedCredentials')
+    }
+
+    // 初始化时加载保存的账号
+    loadSavedCredentials()
+
+    // ========== 标签页管理 ==========
+    let tabIdCounter = 0
+    const tabs = ref([])
+    const activeTab = ref(null)
+
+    // 生成唯一标签ID
+    const generateTabId = () => `tab_${++tabIdCounter}`
+
+    // 打开标签页
+    const openTab = (title, url, icon = 'home') => {
+      // 检查是否已存在相同URL的标签
+      const existingTab = tabs.value.find(tab => tab.url === url)
+      if (existingTab) {
+        activeTab.value = existingTab.id
+        return existingTab.id
+      }
+
+      // 创建新标签
+      const newTab = {
+        id: generateTabId(),
+        title,
+        url,
+        icon
+      }
+      tabs.value.push(newTab)
+      activeTab.value = newTab.id
+      return newTab.id
+    }
+
+    // 切换标签
+    const switchTab = (tabId) => {
+      activeTab.value = tabId
+    }
+
+    // 关闭标签
+    const closeTab = (tabId) => {
+      const index = tabs.value.findIndex(tab => tab.id === tabId)
+      if (index === -1) return
+
+      tabs.value.splice(index, 1)
+
+      // 如果关闭的是当前标签，切换到其他标签
+      if (activeTab.value === tabId) {
+        if (tabs.value.length > 0) {
+          // 优先切换到右边的标签，否则切换到左边的
+          const newIndex = Math.min(index, tabs.value.length - 1)
+          activeTab.value = tabs.value[newIndex].id
+        } else {
+          activeTab.value = null
+        }
+      }
+    }
+
+    // 检查标签是否已打开
+    const isTabOpen = (url) => {
+      return tabs.value.some(tab => tab.url === url)
+    }
+
+    // 新建标签页（打开主页）
+    const openNewTab = () => {
+      openTab('主页', './pages/dashboard.html', 'home')
+    }
+
+    // 刷新当前标签
+    const refreshActiveTab = () => {
+      if (!activeTab.value) return
+      const tab = tabs.value.find(t => t.id === activeTab.value)
+      if (tab) {
+        // 通过重新设置src来刷新webview
+        const webview = document.querySelector(`webview[src="${tab.url}"]`)
+        if (webview && webview.reload) {
+          webview.reload()
+        } else {
+          // 备用方案：重新加载URL
+          const originalUrl = tab.url
+          tab.url = 'about:blank'
+          setTimeout(() => {
+            tab.url = originalUrl
+          }, 10)
+        }
+      }
+    }
+
+    // ========== 窗口控制 ==========
+    const minimizeWindow = () => {
+      if (window.electronAPI?.minimize) {
+        window.electronAPI.minimize()
+      }
+    }
+
+    const maximizeWindow = () => {
+      if (window.electronAPI?.maximize) {
+        window.electronAPI.maximize()
+      }
+    }
+
+    const closeWindow = () => {
+      if (window.electronAPI?.close) {
+        window.electronAPI.close()
+      }
+    }
+
+    // ========== 登录处理 ==========
     const handleLogin = async () => {
       if (!formData.username || !formData.password) {
         TDesign.MessagePlugin.error('请输入用户名和密码')
+        return
+      }
+
+      if (formData.username !== 'admin' || formData.password !== 'zsql1234') {
+        TDesign.MessagePlugin.error('账号或密码错误')
         return
       }
 
@@ -95,8 +166,10 @@ const App = {
       setTimeout(() => {
         loading.value = false
         isLoggedIn.value = true
-        ensureTab('概况')
+        saveCredentials()
         TDesign.MessagePlugin.success('登录成功！')
+        // 自动打开主页
+        openTab('主页', './pages/dashboard.html', 'home')
       }, 1500)
     }
 
@@ -104,120 +177,47 @@ const App = {
       showQRCode.value = !showQRCode.value
     }
 
-    const setTheme = (mode) => {
-      themeMode.value = mode
-      if (mode === 'dark') {
-        document.documentElement.classList.add('tdesign-theme__dark')
-      } else {
-        document.documentElement.classList.remove('tdesign-theme__dark')
-      }
-    }
-
-    const minimizeWindow = () => {
-      window.electronAPI.minimize()
-    }
-
-    const maximizeWindow = () => {
-      window.electronAPI.maximize()
-    }
-
-    const closeWindow = () => {
-      window.electronAPI.close()
-    }
-
     const handleLogout = () => {
       isLoggedIn.value = false
-      tabData.value = []
-      tabValue.value = ''
+      tabs.value = []
+      activeTab.value = null
       formData.username = ''
       formData.password = ''
       formData.remember = false
+      clearCredentials()
       TDesign.MessagePlugin.info('已退出登录')
     }
 
-    // 预约表单示例数据
-    const appointmentColumns = [
-      { colKey: 'name', title: '申请人', width: 100 },
-      { colKey: 'phone', title: '联系电话', width: 130 },
-      { colKey: 'location', title: '打捞位置', ellipsis: true },
-      { colKey: 'weight', title: '预估重量(kg)', width: 130 },
-      { colKey: 'time', title: '预约时间', width: 170 },
-      { colKey: 'status', title: '状态', width: 100 },
-      { colKey: 'operation', title: '操作', width: 120 }
-    ]
-
-    const appointmentData = ref([
-      { id: 1, name: '张建国', phone: '138****5678', location: '长江入海口东侧水域', weight: '850', time: '2026-06-05 09:00', status: '待受理' },
-      { id: 2, name: '李明辉', phone: '159****2341', location: '珠江口航道附近', weight: '1200', time: '2026-06-05 14:00', status: '待受理' },
-      { id: 3, name: '王大海', phone: '177****8902', location: '舟山群岛北侧海域', weight: '2000', time: '2026-06-06 10:30', status: '正在处理' },
-      { id: 4, name: '赵远洋', phone: '136****4567', location: '渤海湾天津港外', weight: '600', time: '2026-06-04 08:00', status: '已处理' },
-      { id: 5, name: '陈航海', phone: '150****6789', location: '厦门湾外海', weight: '1500', time: '2026-06-03 13:00', status: '已评价' },
-      { id: 6, name: '刘水利', phone: '182****3456', location: '长江南京段水域', weight: '450', time: '2026-06-07 11:00', status: '待受理' },
-      { id: 7, name: '孙远航', phone: '138****9012', location: '青岛港外锚地', weight: '3000', time: '2026-06-04 16:00', status: '已处理' },
-      { id: 8, name: '周海洋', phone: '155****7890', location: '北部湾海域', weight: '900', time: '2026-06-06 15:00', status: '正在处理' }
-    ])
-
-    const handleViewAppointment = (row) => {
-      TDesign.MessagePlugin.info(`查看预约单: ${row.row.name}`)
+    // 暴露方法给子页面调用
+    if (typeof window !== 'undefined') {
+      window.electronAPI = window.electronAPI || {}
+      window.electronAPI.openTab = openTab
     }
-
-    const handleProcessAppointment = (row) => {
-      TDesign.MessagePlugin.success(`开始处理 ${row.row.name} 的预约单`)
-    }
-
-    const currentTabLabel = computed(() => {
-      const tab = tabData.value.find(t => t.value === tabValue.value)
-      return tab ? tab.label : ''
-    })
-
-    const currentTab = computed(() => {
-      return tabData.value.find(t => t.value === tabValue.value)
-    })
-
-    const isCurrentTabBrowser = computed(() => {
-      return currentTab.value?.isBrowser || false
-    })
-
-    const currentBrowserUrl = computed(() => {
-      if (!tabValue.value || !browserUrls[tabValue.value]) return ''
-      return browserUrls[tabValue.value]
-    })
-
-    watch(tabValue, (newVal) => {
-      if (newVal && browserUrls[newVal] !== undefined) {
-        browserInputUrl.value = browserUrls[newVal]
-      }
-    })
 
     return {
+      // 登录相关
       isLoggedIn,
       loading,
       showQRCode,
-      themeMode,
       formData,
-      tabValue,
-      tabData,
-      currentTabLabel,
-      currentTab,
-      isCurrentTabBrowser,
-      currentBrowserUrl,
-      browserInputUrl,
-      addTab,
-      addBrowserTab,
-      removeTab,
-      navigateToUrl,
-      handleMenuClick,
       handleLogin,
       handleQRLogin,
-      setTheme,
       handleLogout,
+
+      // 标签页管理
+      tabs,
+      activeTab,
+      openTab,
+      switchTab,
+      closeTab,
+      isTabOpen,
+      openNewTab,
+      refreshActiveTab,
+
+      // 窗口控制
       minimizeWindow,
       maximizeWindow,
-      closeWindow,
-      appointmentColumns,
-      appointmentData,
-      handleViewAppointment,
-      handleProcessAppointment
+      closeWindow
     }
   }
 }

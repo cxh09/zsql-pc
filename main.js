@@ -1,47 +1,48 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, session } = require('electron')
 const path = require('path')
 
+let mainWindow = null
+
 const createWindow = () => {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
-    height: 800,
+    height: 700,
     autoHideMenuBar: true,
-    frame: false,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#ffffff',
+      symbolColor: '#000000',
+      height: 48
+    },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webviewTag: true,
+      nativeWindowOpen: false
     }
   })
 
+  // 允许 webview 页面跨域请求 API
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Access-Control-Allow-Origin': ['*'],
+        'Access-Control-Allow-Methods': ['GET, POST, PUT, DELETE, OPTIONS'],
+        'Access-Control-Allow-Headers': ['Content-Type, Authorization']
+      }
+    })
+  })
+
   mainWindow.loadFile('index.html')
-  
+
   mainWindow.setMenu(null)
 
   if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools()
   }
 }
-
-// 窗口控制 IPC
-ipcMain.on('window-minimize', (event) => {
-  const win = BrowserWindow.fromWebContents(event.sender)
-  win.minimize()
-})
-
-ipcMain.on('window-maximize', (event) => {
-  const win = BrowserWindow.fromWebContents(event.sender)
-  if (win.isMaximized()) {
-    win.unmaximize()
-  } else {
-    win.maximize()
-  }
-})
-
-ipcMain.on('window-close', (event) => {
-  const win = BrowserWindow.fromWebContents(event.sender)
-  win.close()
-})
 
 app.whenReady().then(() => {
   createWindow()
@@ -53,4 +54,19 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// IPC handlers for window controls
+ipcMain.handle('window-maximize', () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize()
+    } else {
+      mainWindow.maximize()
+    }
+  }
+})
+
+ipcMain.handle('window-is-maximized', () => {
+  return mainWindow ? mainWindow.isMaximized() : false
 })

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>浏览器</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="stylesheet" href="../libs/tdesign.min.css" />
+  <style>
+    /* 防止页面闪烁 - 在CSS加载完成前隐藏内容 */
+    html {
+      visibility: hidden;
+      opacity: 0;
+    }
+    html.loaded {
+      visibility: visible;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+    }
+  </style>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--td-bg-color-page);
+    }
+
+    #app {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+    }
+
+    .browser-container {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .search-box {
+      position: relative;
+      margin-bottom: 40px;
+    }
+
+    .search-input-wrapper {
+      position: relative;
+    }
+
+    .search-suggestions {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      background: var(--td-bg-color-container);
+      border: 1px solid var(--td-border-level-1-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      z-index: 100;
+      overflow: hidden;
+      animation: suggestionsEnter 0.2s ease-out;
+    }
+
+    @keyframes suggestionsEnter {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .suggestion-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border-bottom: 1px solid var(--td-border-level-1-color);
+    }
+
+    .suggestion-item:last-child {
+      border-bottom: none;
+    }
+
+    .suggestion-item:hover {
+      background: var(--td-bg-color-secondarycontainer);
+    }
+
+    .suggestion-item.visit {
+      color: var(--td-brand-color);
+    }
+
+    .suggestion-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .suggestion-item:hover .suggestion-icon {
+      opacity: 1;
+    }
+
+    .suggestion-text {
+      flex: 1;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .suggestion-tag {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--td-bg-color-secondarycontainer);
+      color: var(--td-text-color-secondary);
+      flex-shrink: 0;
+    }
+
+    .suggestion-item.visit .suggestion-tag {
+      background: var(--td-brand-color-light);
+      color: var(--td-brand-color);
+    }
+
+    /* 快捷导航 */
+    .quick-nav {
+      width: 100%;
+    }
+
+    .quick-nav-title {
+      font-size: 14px;
+      color: var(--td-text-color-secondary);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .quick-nav-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .quick-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--td-bg-color-container);
+      border: 1px solid var(--td-border-level-1-color);
+    }
+
+    .quick-nav-item:hover {
+      background: var(--td-bg-color-secondarycontainer);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .quick-nav-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .quick-nav-icon.baidu {
+      background: #2932e1;
+      color: white;
+    }
+
+    .quick-nav-icon.bing {
+      background: #008373;
+      color: white;
+    }
+
+    .quick-nav-icon.google {
+      background: #4285f4;
+      color: white;
+    }
+
+    .quick-nav-icon.github {
+      background: #24292f;
+      color: white;
+    }
+
+    .quick-nav-icon.bilibili {
+      background: #fb7299;
+      color: white;
+    }
+
+    .quick-nav-icon.zhihu {
+      background: #0084ff;
+      color: white;
+    }
+
+    .quick-nav-icon.taobao {
+      background: #ff5000;
+      color: white;
+    }
+
+    .quick-nav-icon.jd {
+      background: #e4393c;
+      color: white;
+    }
+
+    .quick-nav-name {
+      font-size: 13px;
+      color: var(--td-text-color-primary);
+      text-align: center;
+    }
+
+    /* 响应式 */
+    @media (max-width: 600px) {
+      .quick-nav-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+
+      .quick-nav-item {
+        padding: 12px 8px;
+      }
+
+      .quick-nav-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+      }
+
+      .quick-nav-name {
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 400px) {
+      .quick-nav-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="browser-container">
+      <!-- 搜索框 -->
+      <div class="search-box">
+        <div class="search-input-wrapper">
+          <t-input
+            v-model="searchUrl"
+            placeholder="请输入网址或搜索内容"
+            size="large"
+            autofocus
+            @keyup.enter="handleSearch"
+            @focus="showSuggestions = suggestions.length > 0"
+          >
+            <template #prefix-icon>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </template>
+            <template #suffix-icon>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="cursor: pointer;" @click="handleSearch">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </template>
+          </t-input>
+
+          <!-- 搜索建议 -->
+          <div v-if="showSuggestions && suggestions.length > 0" class="search-suggestions">
+            <div
+              v-for="(suggestion, index) in suggestions"
+              :key="index"
+              class="suggestion-item"
+              :class="{ visit: suggestion.type === 'visit' }"
+              @click="selectSuggestion(suggestion)"
+            >
+              <div class="suggestion-icon">
+                <svg v-if="suggestion.type === 'visit'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="2" y1="12" x2="22" y2="12"/>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </div>
+              <div class="suggestion-text">{{ suggestion.title }}</div>
+              <div class="suggestion-tag">{{ suggestion.type === 'visit' ? '访问' : '搜索' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 快捷导航 -->
+      <div class="quick-nav">
+        <div class="quick-nav-title">快捷导航</div>
+        <div class="quick-nav-grid">
+          <div class="quick-nav-item" @click="openUrl('https://www.baidu.com')">
+            <div class="quick-nav-icon baidu">百</div>
+            <div class="quick-nav-name">百度</div>
+          </div>
+          <div class="quick-nav-item" @click="openUrl('https://www.bing.com')">
+            <div class="quick-nav-icon bing">B</div>
+            <div class="quick-nav-name">必应</div>
+          </div>
+          <div class="quick-nav-item" @click="openUrl('https://www.google.com')">
+            <div class="quick-nav-icon google">G</div>
+            <div class="quick-nav-name">Google</div>
+          </div>
+          <div class="quick-nav-item" @click="openUrl('https://github.com')">
+            <div class="quick-nav-icon github">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+            </div>
+            <div class="quick-nav-name">GitHub</div>
+          </div>
+          <div class="quick-nav-item" @click="openUrl('https://www.bilibili.com')">
+            <div class="quick-nav-icon bilibili">B</div>
+            <div class="quick-nav-name">哔哩哔哩</div>
+          </div>
+          <div class="quick-nav-item" @click="openUrl('https://www.zhihu.com')">
+            <div class="quick-nav-icon zhihu">知</div>
+            <div class="quick-nav-name">知乎</div>
+          </div>
+          <div class="quick-nav-item" @click="openUrl('https://www.taobao.com')">
+            <div class="quick-nav-icon taobao">淘</div>
+            <div class="quick-nav-name">淘宝</div>
+          </div>
+          <div class="quick-nav-item" @click="openUrl('https://www.jd.com')">
+            <div class="quick-nav-icon jd">JD</div>
+            <div class="quick-nav-name">京东</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../libs/vue.global.js"></script>
+  <script src="../libs/tdesign.min.js"></script>
+  <script>
+    const { createApp, ref, computed, watch } = Vue;
+
+    const App = {
+      setup() {
+        const searchUrl = ref('');
+        const showSuggestions = ref(false);
+        const suggestions = ref([]);
+
+        // 监听输入变化，更新搜索建议
+        watch(searchUrl, (newVal) => {
+          const input = newVal.trim();
+          if (!input) {
+            suggestions.value = [];
+            showSuggestions.value = false;
+            return;
+          }
+
+          const newSuggestions = [];
+          const isUrl = isValidUrl(input);
+
+          if (isUrl) {
+            // 是网址，提供访问选项
+            let url = input;
+            if (!/^https?:\/\//i.test(input)) {
+              url = 'https://' + input;
+            }
+            newSuggestions.push({
+              type: 'visit',
+              title: `访问 ${input}`,
+              url: url
+            });
+          }
+
+          // 始终提供搜索选项
+          newSuggestions.push({
+            type: 'search',
+            title: `搜索 "${input}"`,
+            url: 'https://www.bing.com/search?q=' + encodeURIComponent(input)
+          });
+
+          suggestions.value = newSuggestions;
+        });
+
+        // 判断是否为有效网址
+        const isValidUrl = (str) => {
+          // 检查是否以 http:// 或 https:// 开头
+          if (/^https?:\/\//i.test(str)) {
+            try {
+              new URL(str);
+              return true;
+            } catch (e) {
+              return false;
+            }
+          }
+          // 检查是否为有效域名
+          const domainPattern = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+          if (domainPattern.test(str.trim())) {
+            return true;
+          }
+          // 检查是否为 IP 地址
+          const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+          if (ipPattern.test(str.trim())) {
+            const parts = str.trim().split('.');
+            return parts.every(part => parseInt(part) <= 255);
+          }
+          return false;
+        };
+
+        // 处理搜索
+        const handleSearch = () => {
+          const input = searchUrl.value.trim();
+          if (!input) {
+            TDesign.MessagePlugin.warning('请输入网址或搜索内容');
+            return;
+          }
+
+          let url;
+          if (isValidUrl(input)) {
+            // 是网址，直接访问
+            url = input;
+            if (!/^https?:\/\//i.test(url)) {
+              url = 'https://' + url;
+            }
+          } else {
+            // 不是网址，使用必应搜索
+            url = 'https://www.bing.com/search?q=' + encodeURIComponent(input);
+          }
+
+          openUrl(url);
+        };
+
+        // 选择建议项
+        const selectSuggestion = (suggestion) => {
+          showSuggestions.value = false;
+          openUrl(suggestion.url);
+        };
+
+        // 打开URL
+        const openUrl = (url) => {
+          if (window.electronAPI?.openTab) {
+            // 在Electron环境中打开新标签页
+            let title = '浏览器';
+            try {
+              const urlObj = new URL(url);
+              title = urlObj.hostname;
+            } catch (e) {
+              // 使用默认标题
+            }
+            window.electronAPI.openTab(title, url, 'globe');
+          } else {
+            // 在浏览器中直接打开
+            window.open(url, '_blank');
+          }
+        };
+
+        return {
+          searchUrl,
+          showSuggestions,
+          suggestions,
+          handleSearch,
+          selectSuggestion,
+          openUrl
+        };
+      }
+    };
+
+    const app = createApp(App);
+    app.use(TDesign);
+    app.mount('#app');
+
+    // CSS加载完成后显示页面
+    window.addEventListener('load', () => {
+      document.documentElement.classList.add('loaded');
+    });
+  </script>
+</body>
+</html>

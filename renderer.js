@@ -137,10 +137,28 @@ const App = {
             }
           })
 
-          // 页面加载完成后获取 favicon
+          // 页面开始加载 - 显示加载动画
+          webview.addEventListener('did-start-loading', () => {
+            const tab = getTab()
+            if (tab) tab.loading = true
+          })
+
+          // 页面停止加载 - 隐藏加载动画
+          webview.addEventListener('did-stop-loading', () => {
+            const tab = getTab()
+            if (tab) tab.loading = false
+          })
+
+          // 页面加载完成后获取 favicon（仅第三方网页）
           webview.addEventListener('did-finish-load', () => {
             const tab = getTab()
             if (!tab) return
+            // 加载完成，确保关闭加载状态
+            tab.loading = false
+            // 只有第三方网页（http/https 开头）才获取 favicon
+            if (!tab.url.startsWith('http://') && !tab.url.startsWith('https://')) {
+              return
+            }
             try {
               webview.executeJavaScript(`
                 (() => {
@@ -168,6 +186,12 @@ const App = {
                 }
               }).catch(() => {})
             } catch (e) {}
+          })
+
+          // 页面加载失败也关闭加载状态
+          webview.addEventListener('did-fail-load', () => {
+            const tab = getTab()
+            if (tab) tab.loading = false
           })
         })
       })
@@ -202,79 +226,6 @@ const App = {
       return tabs.value.some(tab => pageKey ? tab.pageKey === pageKey : tab.url === url)
     }
 
-    // ========== 浏览器对话框 ==========
-    const browserDialog = reactive({
-      visible: false,
-      url: ''
-    })
-
-    // ========== 浏览器URL输入 ==========
-    const browserInputUrl = ref('https://')
-    const browserSuggestions = ref([])
-    const showBrowserSuggestions = ref(false)
-
-    // 检查是否是浏览器输入页面
-    const isBrowserInputPage = computed(() => {
-      if (!activeTab.value) return false
-      const tab = tabs.value.find(t => t.id === activeTab.value)
-      return tab && tab.url === 'browser://input'
-    })
-
-    // 监听输入变化，更新搜索建议
-    watch(browserInputUrl, (newVal) => {
-      const input = newVal.trim()
-      if (!input || input === 'https://') {
-        browserSuggestions.value = []
-        showBrowserSuggestions.value = false
-        return
-      }
-      
-      // 去掉 https:// 前缀进行判断
-      const cleanInput = input.replace(/^https?:\/\//, '')
-      
-      const suggestions = []
-      const isUrl = isValidUrl(cleanInput)
-      
-      if (isUrl) {
-        // 是网址，提供访问选项
-        let url = cleanInput
-        if (!/^https?:\/\//i.test(input)) {
-          url = 'https://' + cleanInput
-        }
-        suggestions.push({
-          type: 'visit',
-          title: `访问 ${cleanInput}`,
-          url: url,
-          icon: 'globe'
-        })
-      }
-      
-      // 始终提供搜索选项
-      suggestions.push({
-        type: 'search',
-        title: `搜索 "${cleanInput}"`,
-        url: 'https://www.bing.com/search?q=' + encodeURIComponent(cleanInput),
-        icon: 'search'
-      })
-      
-      browserSuggestions.value = suggestions
-      showBrowserSuggestions.value = suggestions.length > 0
-    })
-
-    // 检查当前是否有浏览器标签页处于激活状态
-    const isBrowserTabActive = computed(() => {
-      if (!activeTab.value) return false
-      const tab = tabs.value.find(t => t.id === activeTab.value)
-      return tab && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))
-    })
-
-    // 打开浏览器输入页面
-    const openBrowserDialog = () => {
-      showMenu.value = false
-      browserInputUrl.value = 'https://'
-      openTab('浏览器', 'browser://input', 'home')
-    }
-
     // 判断是否为有效网址
     const isValidUrl = (str) => {
       // 检查是否以 http:// 或 https:// 开头
@@ -298,78 +249,6 @@ const App = {
         return parts.every(part => parseInt(part) <= 255)
       }
       return false
-    }
-
-    // 确认浏览器URL并加载
-    const confirmBrowserUrl = (targetUrl) => {
-      const url = targetUrl || browserInputUrl.value.trim()
-      if (!url || url === 'https://') {
-        TDesign.MessagePlugin.warning('请输入网页地址')
-        return
-      }
-      
-      let finalUrl = url
-      let title = '浏览器'
-      try {
-        const urlObj = new URL(finalUrl)
-        title = urlObj.hostname
-      } catch (e) {
-        // 使用默认标题
-      }
-      
-      // 隐藏建议列表
-      showBrowserSuggestions.value = false
-      
-      // 更新当前tab的URL
-      const currentTabId = activeTab.value
-      const tab = tabs.value.find(t => t.id === currentTabId)
-      if (tab) {
-        tab.url = finalUrl
-        tab.title = title
-        // 重新加载webview
-        nextTick(() => {
-          const webview = document.querySelector('.page-webview.active')
-          if (webview) {
-            webview.loadURL(finalUrl)
-          }
-        })
-      }
-    }
-
-    // 选择建议项
-    const selectBrowserSuggestion = (suggestion) => {
-      browserInputUrl.value = suggestion.url
-      confirmBrowserUrl(suggestion.url)
-    }
-
-    // 旧版本兼容 - 保留原函数
-    const confirmBrowserUrlOld = () => {
-      const url = browserDialog.url.trim()
-      if (!url || url === 'https://') {
-        TDesign.MessagePlugin.warning('请输入网页地址')
-        return
-      }
-      let finalUrl
-      // 判断是否为网址
-      if (isValidUrl(url)) {
-        // 是网址，直接访问
-        finalUrl = url
-        if (!/^https?:\/\//i.test(finalUrl)) {
-          finalUrl = 'https://' + finalUrl
-        }
-      } else {
-        // 不是网址，使用必应搜索
-        finalUrl = 'https://www.bing.com/search?q=' + encodeURIComponent(url)
-      }
-      let title = '浏览器'
-      try {
-        const urlObj = new URL(finalUrl)
-        title = urlObj.hostname
-      } catch (e) {
-        // 使用默认标题
-      }
-      browserDialog.visible = false
-      openTab(title, finalUrl, 'home')
     }
 
     // 刷新当前标签
@@ -440,10 +319,11 @@ const App = {
     }
 
     const handleLogout = () => {
-      TDesign.DialogPlugin.confirm({
+      const confirmDialog = TDesign.DialogPlugin.confirm({
         header: '确认退出账号',
         body: '退出账号后将清除当前登录状态，是否继续？',
         onConfirm: () => {
+          confirmDialog.destroy()
           isLoggedIn.value = false
           tabs.value = []
           activeTab.value = null
@@ -454,6 +334,9 @@ const App = {
           showMenu.value = false
           clearCredentials()
           TDesign.MessagePlugin.info('已退出登录')
+        },
+        onCancel: () => {
+          confirmDialog.destroy()
         }
       })
     }
@@ -511,6 +394,12 @@ const App = {
       showUserMenu.value = false
       showMenu.value = false
       openTab('系统设置', './pages/settings.html', 'settings', 'settings')
+    }
+
+    const openChangelog = () => {
+      showUserMenu.value = false
+      showMenu.value = false
+      openTab('更新日志', './pages/changelog.html', 'file', 'changelog')
     }
 
     // 点击页面空白处关闭菜单
@@ -572,15 +461,6 @@ const App = {
       switchTab,
       closeTab,
       isTabOpen,
-      isBrowserTabActive,
-      isBrowserInputPage,
-      browserDialog,
-      browserInputUrl,
-      browserSuggestions,
-      showBrowserSuggestions,
-      openBrowserDialog,
-      confirmBrowserUrl,
-      selectBrowserSuggestion,
       refreshActiveTab,
 
       // 窗口控制
@@ -597,6 +477,7 @@ const App = {
       toggleUserMenu,
       openAccountInfo,
       openUserSettings,
+      openChangelog,
 
       // 客户会话
       showCustomerSubmenu,

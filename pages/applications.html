@@ -4,7 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>预约查看 - 智拾清澜工作台</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tdesign-vue-next/dist/tdesign.min.css" />
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="stylesheet" href="../libs/tdesign.min.css" />
+  <style>
+    /* 防止页面闪烁 - 在CSS加载完成前隐藏内容 */
+    html {
+      visibility: hidden;
+      opacity: 0;
+    }
+    html.loaded {
+      visibility: visible;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+    }
+  </style>
   <style>
     * {
       margin: 0;
@@ -629,8 +642,8 @@
     </t-dialog>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tdesign-vue-next/dist/tdesign.min.js"></script>
+  <script src="../libs/vue.global.js"></script>
+  <script src="../libs/tdesign.min.js"></script>
   <script>
     const { createApp, ref, computed, onMounted, watch } = Vue;
 
@@ -895,6 +908,11 @@
     const app = createApp(App);
     app.use(TDesign);
     app.mount('#app');
+
+    // CSS加载完成后显示页面
+    window.addEventListener('load', () => {
+      document.documentElement.classList.add('loaded');
+    });
   </script>
 </body>
 </html>

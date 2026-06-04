@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>更新日志 - 智拾清澜工作台</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="stylesheet" href="../libs/tdesign.min.css" />
+  <style>
+    /* 防止页面闪烁 - 在CSS加载完成前隐藏内容 */
+    html {
+      visibility: hidden;
+      opacity: 0;
+    }
+    html.loaded {
+      visibility: visible;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+    }
+  </style>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--td-bg-color-page);
+      padding: 16px 24px;
+    }
+
+    #app {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+      flex-shrink: 0;
+    }
+
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    .page-header p {
+      font-size: 14px;
+      color: var(--td-text-color-secondary);
+      margin-top: 4px;
+    }
+
+    .changelog-container {
+      flex: 1;
+      width: 100%;
+      background: var(--td-bg-color-container);
+      border-radius: 8px;
+      border: 1px solid var(--td-border-level-1-color);
+      padding: 24px;
+    }
+
+    /* Markdown 样式 */
+    .markdown-body {
+      color: var(--td-text-color-primary);
+      line-height: 1.6;
+    }
+
+    .markdown-body h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--td-border-level-1-color);
+    }
+
+    .markdown-body h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      color: var(--td-brand-color);
+    }
+
+    .markdown-body h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      color: var(--td-text-color-primary);
+    }
+
+    .markdown-body ul {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+
+    .markdown-body li {
+      margin-bottom: 4px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .markdown-body hr {
+      border: none;
+      border-top: 1px solid var(--td-border-level-1-color);
+      margin: 24px 0;
+    }
+
+    /* 加载状态 */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--td-text-color-secondary);
+    }
+
+    /* 错误状态 */
+    .error-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .error-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .error-state p {
+      font-size: 14px;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .changelog-container {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="page-header">
+      <h1>更新日志</h1>
+      <p>查看智拾清澜工作台的版本更新历史</p>
+    </div>
+
+    <div class="changelog-container">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="loading-state">
+        <t-loading text="加载中..."></t-loading>
+      </div>
+
+      <!-- 错误状态 -->
+      <div v-else-if="error" class="error-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <p>{{ error }}</p>
+      </div>
+
+      <!-- Markdown 内容 -->
+      <div v-else class="markdown-body" v-html="renderedContent"></div>
+    </div>
+  </div>
+
+  <script src="../libs/vue.global.js"></script>
+  <script src="../libs/tdesign.min.js"></script>
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    const App = {
+      setup() {
+        const loading = ref(true);
+        const error = ref('');
+        const markdownContent = ref('');
+
+        // 简单的 Markdown 转 HTML
+        const renderedContent = computed(() => {
+          let html = markdownContent.value;
+
+          // 转义 HTML 特殊字符
+          html = html.replace(/&/g, '&amp;')
+                     .replace(/</g, '&lt;')
+                     .replace(/>/g, '&gt;');
+
+          // 标题
+          html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+          html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+          html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+          // 粗体
+          html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+          // 斜体
+          html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+          // 代码
+          html = html.replace(/`([^`]+)`/g, '<code style="background: var(--td-bg-color-secondarycontainer); padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
+
+          // 无序列表
+          html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+          html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+          // 有序列表
+          html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+
+          // 链接
+          html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: var(--td-brand-color);">$1</a>');
+
+          // 分隔线
+          html = html.replace(/^\-{3,}$/gim, '<hr>');
+          html = html.replace(/^\*{3,}$/gim, '<hr>');
+
+          // 段落
+          html = html.replace(/\n\n/g, '</p><p>');
+          html = '<p>' + html + '</p>';
+
+          // 清理空段落
+          html = html.replace(/<p><\/p>/g, '');
+          html = html.replace(/<p>(<h[1-6]>.*?<\/h[1-6]>)<\/p>/g, '$1');
+          html = html.replace(/<p>(<ul>.*?<\/ul>)<\/p>/g, '$1');
+          html = html.replace(/<p>(<hr>)<\/p>/g, '$1');
+
+          return html;
+        });
+
+        // 加载更新日志
+        const loadChangelog = async () => {
+          try {
+            loading.value = true;
+            error.value = '';
+
+            const response = await fetch('../assets/changelog.md');
+            if (!response.ok) {
+              throw new Error('加载更新日志失败');
+            }
+
+            markdownContent.value = await response.text();
+          } catch (err) {
+            error.value = err.message || '加载失败，请稍后重试';
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        onMounted(() => {
+          loadChangelog();
+        });
+
+        return {
+          loading,
+          error,
+          renderedContent
+        };
+      }
+    };
+
+    const app = createApp(App);
+    app.use(TDesign);
+    app.mount('#app');
+
+    // CSS加载完成后显示页面
+    window.addEventListener('load', () => {
+      document.documentElement.classList.add('loaded');
+    });
+  </script>
+</body>
+</html>

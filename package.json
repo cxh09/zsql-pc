@@ -17,7 +17,7 @@
     "vue",
     "tdesign"
   ],
-  "author": "",
+  "author": "ZSQL Team <chenxinhang2009@gmail.com>",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {

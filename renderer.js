@@ -221,6 +221,14 @@ const App = {
       }
     }
 
+    // 鼠标中间（滚轮）点击标签时关闭
+    const handleTabMouseUp = (tabId, e) => {
+      if (e.button === 1) {
+        e.preventDefault()
+        closeTab(tabId)
+      }
+    }
+
     // 检查标签是否已打开（支持 pageKey 或 URL 匹配）
     const isTabOpen = (url, pageKey) => {
       return tabs.value.some(tab => pageKey ? tab.pageKey === pageKey : tab.url === url)
@@ -386,8 +394,7 @@ const App = {
     const openAccountInfo = () => {
       showUserMenu.value = false
       showMenu.value = false
-      openTab('账户信息', './pages/settings.html', 'settings', 'settings')
-      TDesign.MessagePlugin.info('账户信息页面')
+      openTab('账户信息', './pages/account.html', 'user', 'account')
     }
 
     const openUserSettings = () => {
@@ -441,6 +448,21 @@ const App = {
       })
     }
 
+    // 监听来自主进程的退出登录请求
+    if (window.electronAPI?.onLogout) {
+      window.electronAPI.onLogout(() => {
+        isLoggedIn.value = false
+        tabs.value = []
+        activeTab.value = null
+        formData.username = ''
+        formData.password = ''
+        formData.remember = false
+        showUserMenu.value = false
+        showMenu.value = false
+        clearCredentials()
+      })
+    }
+
     // 挂载后为已有 webview 绑定监听
     nextTick(attachWebviewListeners)
 
@@ -460,6 +482,7 @@ const App = {
       openTab,
       switchTab,
       closeTab,
+      handleTabMouseUp,
       isTabOpen,
       refreshActiveTab,
 

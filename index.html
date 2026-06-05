@@ -903,6 +903,7 @@
             class="browser-tab"
             :class="{ active: activeTab === tab.id, loading: tab.loading }"
             @click="switchTab(tab.id)"
+            @mouseup="handleTabMouseUp(tab.id, $event)"
           >
             <!-- 活跃标签指示条 -->
             <div v-if="activeTab === tab.id" class="tab-indicator"></div>
@@ -1148,8 +1149,8 @@
 
           <!-- 菜单下拉 -->
           <div class="menu-dropdown" :class="{ open: showMenu }" @click.stop>
-            <div class="menu-dropdown-item" style="cursor: default; pointer-events: none; opacity: 0.8;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="menu-dropdown-item" style="cursor: pointer;" @click="openAccountInfo">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events: none;">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="12" cy="7" r="4"/>
               </svg>

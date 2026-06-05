@@ -86,3 +86,9 @@ ipcMain.handle('window-maximize', () => {
 ipcMain.handle('window-is-maximized', () => {
   return mainWindow ? mainWindow.isMaximized() : false
 })
+
+ipcMain.handle('logout', () => {
+  if (mainWindow) {
+    mainWindow.webContents.send('logout-request')
+  }
+})

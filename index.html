@@ -929,12 +929,22 @@
                 <!-- browser/compass: lucide-compass -->
                 <circle cx="12" cy="12" r="10" v-if="tab.icon === 'browser'"/>
                 <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" v-if="tab.icon === 'browser'"/>
+                <!-- user: lucide-circle-user-round -->
+                <path d="M18 20a6 6 0 0 0-12 0" v-if="tab.icon === 'user'"/>
+                <circle cx="12" cy="10" r="4" v-if="tab.icon === 'user'"/>
+                <circle cx="12" cy="12" r="10" v-if="tab.icon === 'user'"/>
                 <!-- globe: 第三方网页默认图标 -->
                 <circle cx="12" cy="12" r="10" v-if="tab.icon === 'globe'"/>
                 <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" v-if="tab.icon === 'globe'"/>
                 <path d="M2 12h20" v-if="tab.icon === 'globe'"/>
+                <!-- doc: 文档图标 -->
+                <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" v-if="tab.icon === 'doc'"/>
+                <path d="M14 2v5a1 1 0 0 0 1 1h5" v-if="tab.icon === 'doc'"/>
+                <path d="M10 9H8" v-if="tab.icon === 'doc'"/>
+                <path d="M16 13H8" v-if="tab.icon === 'doc'"/>
+                <path d="M16 17H8" v-if="tab.icon === 'doc'"/>
                 <!-- default -->
-                <circle cx="12" cy="12" r="10" v-if="!tab.icon || !['home','file','settings','message','browser','globe'].includes(tab.icon)"></circle>
+                <circle cx="12" cy="12" r="10" v-if="!tab.icon || !['home','file','settings','message','browser','globe','user','doc'].includes(tab.icon)"></circle>
               </svg>
             </div>
             <span class="browser-tab-title">{{ tab.title }}</span>

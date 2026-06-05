@@ -143,43 +143,6 @@
       margin-left: 16px;
     }
 
-    /* 用户信息 */
-    .user-profile {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 8px 0;
-    }
-
-    .user-avatar-large {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      font-weight: 600;
-    }
-
-    .user-profile-info {
-      flex: 1;
-    }
-
-    .user-profile-name {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--td-text-color-primary);
-    }
-
-    .user-profile-role {
-      font-size: 13px;
-      color: var(--td-text-color-secondary);
-      margin-top: 4px;
-    }
-
     /* 关于信息 */
     .about-info {
       text-align: center;
@@ -254,71 +217,63 @@
   <div id="app">
     <div class="page-header">
       <h1>系统设置</h1>
-      <p>管理您的账户和系统偏好设置</p>
+      <p>管理您的系统偏好设置</p>
     </div>
 
     <div class="settings-container">
-      <!-- 数据管理 -->
+      <!-- 账户设置 -->
       <div class="settings-card">
         <div class="settings-card-header">
           <div class="settings-card-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
-              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 20a6 6 0 0 0-12 0"/>
+              <circle cx="12" cy="10" r="4"/>
+              <circle cx="12" cy="12" r="10"/>
             </svg>
           </div>
           <div>
-            <div class="settings-card-title">数据管理</div>
-            <div class="settings-card-subtitle">管理本地数据</div>
+            <div class="settings-card-title">账户设置</div>
+            <div class="settings-card-subtitle">管理您的账户信息</div>
           </div>
         </div>
         <div class="settings-card-body">
           <div class="setting-item">
             <div class="setting-info">
-              <div class="setting-label">清除缓存</div>
-              <div class="setting-desc">清除本地缓存数据，释放空间</div>
-            </div>
-            <div class="setting-control">
-              <t-button theme="danger" variant="outline" size="small" @click="clearCache">清除</t-button>
+              <div class="setting-label">账户名称</div>
+              <div class="setting-desc">{{ accountName }}</div>
             </div>
           </div>
           <div class="setting-item">
             <div class="setting-info">
-              <div class="setting-label">导出数据</div>
-              <div class="setting-desc">导出所有预约数据到本地</div>
+              <div class="setting-label">账户信息</div>
+              <div class="setting-desc">查看和修改账户详细信息</div>
             </div>
             <div class="setting-control">
-              <t-button theme="primary" variant="outline" size="small" @click="exportData">导出</t-button>
+              <t-button theme="primary" variant="outline" size="small" @click="openAccountInfo">进入</t-button>
             </div>
           </div>
           <div class="setting-item">
             <div class="setting-info">
-              <div class="setting-label">自动刷新</div>
-              <div class="setting-desc">定时自动刷新数据</div>
+              <div class="setting-label">记住账户信息</div>
+              <div class="setting-desc">下次登录时自动填充账户信息</div>
             </div>
             <div class="setting-control">
-              <t-switch v-model="autoRefresh.enabled"></t-switch>
+              <t-switch v-model="rememberAccount"></t-switch>
             </div>
           </div>
-          <div v-if="autoRefresh.enabled" class="setting-item">
+          <div class="setting-item">
             <div class="setting-info">
-              <div class="setting-label">刷新间隔</div>
-              <div class="setting-desc">设置自动刷新时间间隔</div>
+              <div class="setting-label">退出账户</div>
+              <div class="setting-desc">退出当前登录的账户</div>
             </div>
             <div class="setting-control">
-              <t-select v-model="autoRefresh.interval" style="width: 120px">
-                <t-option :value="30" label="30秒"></t-option>
-                <t-option :value="60" label="1分钟"></t-option>
-                <t-option :value="300" label="5分钟"></t-option>
-                <t-option :value="600" label="10分钟"></t-option>
-              </t-select>
+              <t-button theme="danger" variant="outline" size="small" @click="logout">退出</t-button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 关于 -->
+      <!-- 关于软件 -->
       <div class="settings-card">
         <div class="settings-card-body">
           <div class="about-info">
@@ -337,10 +292,8 @@
               开发者：Github@cxh09，创客社24届学生cxh制作
             </div>
             <div class="about-links">
-              <span class="about-link" @click="openLink('help')">使用帮助</span>
+              <span class="about-link" @click="openLink('agreement')">用户协议</span>
               <span class="about-link" @click="openLink('privacy')">隐私政策</span>
-              <span class="about-link" @click="openChangelog">更新日志</span>
-              <span class="about-link" @click="openLink('feedback')">反馈建议</span>
             </div>
           </div>
         </div>
@@ -351,89 +304,86 @@
   <script src="../libs/vue.global.js"></script>
   <script src="../libs/tdesign.min.js"></script>
   <script>
-    const { createApp, ref, reactive, onMounted } = Vue;
+    const { createApp, ref, onMounted } = Vue;
 
     const App = {
       setup() {
-        const autoRefresh = reactive({
-          enabled: false,
-          interval: 60
-        });
+        const accountName = ref('admin');
+        const rememberAccount = ref(false);
 
         // 加载保存的设置
         const loadSettings = () => {
-          const saved = localStorage.getItem('appSettings');
+          const saved = localStorage.getItem('savedCredentials');
           if (saved) {
             try {
-              const settings = JSON.parse(saved);
-              Object.assign(autoRefresh, settings.autoRefresh || {});
+              const credentials = JSON.parse(saved);
+              accountName.value = credentials.username || 'admin';
+              rememberAccount.value = !!(credentials.username || credentials.password);
             } catch (e) {
               console.error('加载设置失败:', e);
             }
           }
         };
 
-        // 保存设置
-        const saveSettings = () => {
-          const settings = {
-            autoRefresh: { ...autoRefresh }
-          };
-          localStorage.setItem('appSettings', JSON.stringify(settings));
+        // 保存记住账户设置
+        const saveRememberAccount = () => {
+          const saved = localStorage.getItem('savedCredentials');
+          let credentials = {};
+          if (saved) {
+            try {
+              credentials = JSON.parse(saved);
+            } catch (e) {}
+          }
+          if (rememberAccount.value) {
+            credentials.username = accountName.value;
+            localStorage.setItem('savedCredentials', JSON.stringify(credentials));
+          } else {
+            localStorage.removeItem('savedCredentials');
+          }
         };
 
-        // 清除缓存
-        const clearCache = () => {
+        // 监听记住账户变化
+        const onRememberChange = (val) => {
+          rememberAccount.value = val;
+          saveRememberAccount();
+        };
+
+        // 打开账户信息页面
+        const openAccountInfo = () => {
+          if (window.electronAPI?.openTab) {
+            window.electronAPI.openTab('账户信息', './pages/account.html', 'user', 'account');
+          } else {
+            window.open('./account.html', '_blank');
+          }
+        };
+
+        // 退出登录
+        const logout = () => {
           TDesign.DialogPlugin.confirm({
-            header: '确认清除缓存',
-            body: '清除缓存将删除所有本地存储的数据，是否继续？',
+            header: '确认退出账户',
+            body: '退出账户后将返回登录页面，是否继续？',
             onConfirm: () => {
-              localStorage.clear();
-              TDesign.MessagePlugin.success('缓存已清除');
-              setTimeout(() => location.reload(), 1000);
+              localStorage.removeItem('savedCredentials');
+              if (window.electronAPI?.logout) {
+                window.electronAPI.logout();
+              } else {
+                location.reload();
+              }
             }
           });
         };
 
-        // 导出数据
-        const exportData = () => {
-          const data = {
-            settings: JSON.parse(localStorage.getItem('appSettings') || '{}'),
-            credentials: JSON.parse(localStorage.getItem('savedCredentials') || '{}'),
-            exportTime: new Date().toISOString()
-          };
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `智拾清澜设置备份_${new Date().toISOString().split('T')[0]}.json`;
-          link.click();
-          URL.revokeObjectURL(url);
-          TDesign.MessagePlugin.success('设置导出成功');
-        };
-
         // 打开链接
         const openLink = (type) => {
-          const messages = {
-            help: '使用帮助文档正在编写中...',
-            privacy: '隐私政策页面正在编写中...',
-            feedback: '感谢您的反馈！请发送邮件至 support@example.com'
-          };
-          TDesign.MessagePlugin.info(messages[type]);
-        };
-
-        // 打开更新日志
-        const openChangelog = () => {
           if (window.electronAPI?.openTab) {
-            window.electronAPI.openTab('更新日志', './pages/changelog.html', 'file', 'changelog');
+            const titles = {
+              agreement: '用户协议',
+              privacy: '隐私政策'
+            };
+            window.electronAPI.openTab(titles[type], `./agreement.html?tab=${type}`, 'document', type);
           } else {
-            // 如果在浏览器中直接打开
-            window.open('./changelog.html', '_blank');
+            window.open(`./agreement.html?tab=${type}`, '_blank');
           }
-        };
-
-        // 监听设置变化
-        const watchSettings = () => {
-          saveSettings();
         };
 
         onMounted(() => {
@@ -441,12 +391,11 @@
         });
 
         return {
-          autoRefresh,
-          clearCache,
-          exportData,
-          openLink,
-          openChangelog,
-          watchSettings
+          accountName,
+          rememberAccount,
+          openAccountInfo,
+          logout,
+          openLink
         };
       }
     };

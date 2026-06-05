@@ -92,3 +92,9 @@ ipcMain.handle('logout', () => {
     mainWindow.webContents.send('logout-request')
   }
 })
+
+ipcMain.handle('set-theme', (_event, theme) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('theme-change', theme)
+  }
+})

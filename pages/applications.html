@@ -562,7 +562,6 @@
             <td>
               <div class="action-btns">
                 <button class="action-btn view" @click="viewDetail(item)">查看</button>
-                <button v-if="item.status === 'pending'" class="action-btn process" @click="processItem(item)">处理</button>
               </div>
             </td>
           </tr>
@@ -583,63 +582,6 @@
       </div>
     </div>
 
-    <!-- 详情弹窗 -->
-    <t-dialog
-      v-model:visible="detailVisible"
-      header="预约详情"
-      width="640px"
-      :footer="false"
-      @close="onDetailClose"
-    >
-      <div v-if="selectedItem" style="padding: 8px 0;">
-        <t-descriptions :column="2" bordered>
-          <t-descriptions-item label="预约ID">#{{ selectedItem.id }}</t-descriptions-item>
-          <t-descriptions-item label="客户姓名">{{ selectedItem.name }}</t-descriptions-item>
-          <t-descriptions-item label="联系电话">{{ selectedItem.phone }}</t-descriptions-item>
-          <t-descriptions-item label="物品类型">{{ selectedItem.itemType || '-' }}</t-descriptions-item>
-          <t-descriptions-item label="预约日期">{{ selectedItem.date }}</t-descriptions-item>
-          <t-descriptions-item label="预约时间">{{ selectedItem.time }}</t-descriptions-item>
-          <t-descriptions-item label="打捞位置" :span="2">{{ selectedItem.location }}</t-descriptions-item>
-          <t-descriptions-item label="详细描述" :span="2">{{ selectedItem.description || '暂无描述' }}</t-descriptions-item>
-          <t-descriptions-item label="提交时间" :span="2">{{ formatDate(selectedItem.created_at) }}</t-descriptions-item>
-        </t-descriptions>
-
-        <!-- 图片展示 -->
-        <div v-if="selectedItem.images && selectedItem.images.length > 0" style="margin-top: 20px;">
-          <div style="font-size:14px;font-weight:600;color:var(--td-text-color-primary);margin-bottom:10px;">
-            上传图片 ({{ selectedItem.images.length }})
-          </div>
-          <div class="media-gallery">
-            <div
-              v-for="(img, idx) in selectedItem.images"
-              :key="'img-' + idx"
-              class="media-item"
-              @click="openPreview(imgUrl(img))"
-            >
-              <img :src="imgUrl(img)" :alt="'图片' + (idx + 1)" loading="lazy" />
-            </div>
-          </div>
-        </div>
-
-        <!-- 视频展示 -->
-        <div v-if="selectedItem.videos && selectedItem.videos.length > 0" style="margin-top: 20px;">
-          <div style="font-size:14px;font-weight:600;color:var(--td-text-color-primary);margin-bottom:10px;">
-            上传视频 ({{ selectedItem.videos.length }})
-          </div>
-          <div class="media-gallery">
-            <div
-              v-for="(video, idx) in selectedItem.videos"
-              :key="'video-' + idx"
-              class="media-item"
-              @click="openPreview(videoUrl(video))"
-            >
-              <video :src="videoUrl(video)" muted preload="metadata"></video>
-              <span class="video-badge">&#9654; 视频</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </t-dialog>
   </div>
 
   <script src="../libs/vue.global.js"></script>
@@ -656,8 +598,6 @@
         const filterStatus = ref('');
         const currentPage = ref(1);
         const pageSize = ref(10);
-        const detailVisible = ref(false);
-        const selectedItem = ref(null);
         const previewUrl = ref('');
 
         const stats = ref({
@@ -839,22 +779,9 @@
           return date.toLocaleString('zh-CN');
         };
 
-        // 查看详情
+        // 查看详情 - 打开新页面
         const viewDetail = (item) => {
-          selectedItem.value = item;
-          detailVisible.value = true;
-        };
-
-        // 关闭详情
-        const onDetailClose = () => {
-          selectedItem.value = null;
-        };
-
-        // 处理预约（待处理 -> 处理中）
-        const processItem = (item) => {
-          item.status = 'processing';
-          updateStats();
-          TDesign.MessagePlugin.success(`已开始处理 ${item.name} 的预约`);
+          window.open(`application-detail.html?id=${item.id}`, '_blank');
         };
 
         // 导出数据
@@ -880,8 +807,6 @@
           filterStatus,
           currentPage,
           pageSize,
-          detailVisible,
-          selectedItem,
           stats,
           filteredData,
           pagedData,
@@ -898,8 +823,6 @@
           truncate,
           formatDate,
           viewDetail,
-          onDetailClose,
-          processItem,
           exportData
         };
       }

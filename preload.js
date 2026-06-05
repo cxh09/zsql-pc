@@ -9,5 +9,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   logout: () => ipcRenderer.invoke('logout'),
   onLogout: (callback) => {
     ipcRenderer.on('logout-request', () => callback())
+  },
+  setTheme: (theme) => ipcRenderer.invoke('set-theme', theme),
+  onThemeChange: (callback) => {
+    ipcRenderer.on('theme-change', (_event, theme) => callback(theme))
   }
 })

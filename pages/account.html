@@ -143,81 +143,16 @@
       margin-left: 16px;
     }
 
-    /* 用户信息 */
-    .user-profile {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 8px 0;
-    }
-
-    .user-avatar-large {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      font-weight: 600;
-    }
-
-    .user-profile-info {
-      flex: 1;
-    }
-
-    .user-profile-name {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--td-text-color-primary);
-    }
-
-    .user-profile-role {
-      font-size: 13px;
-      color: var(--td-text-color-secondary);
-      margin-top: 4px;
-    }
-
-    /* 安全设置 */
-    .security-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--td-border-level-1-color);
-    }
-
-    .security-item:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-
-    .security-item:first-child {
-      padding-top: 0;
-    }
-
-    .security-info {
-      flex: 1;
-    }
-
-    .security-label {
-      font-size: 14px;
+    /* 账户信息 */
+    .account-name {
+      font-size: 16px;
       font-weight: 500;
       color: var(--td-text-color-primary);
-      margin-bottom: 2px;
-    }
-
-    .security-status {
-      font-size: 12px;
-      color: var(--td-text-color-secondary);
     }
 
     /* 响应式 */
     @media (max-width: 768px) {
-      .setting-item,
-      .security-item {
+      .setting-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
@@ -226,11 +161,6 @@
       .setting-control {
         margin-left: 0;
       }
-
-      .user-profile {
-        flex-direction: column;
-        text-align: center;
-      }
     }
   </style>
 </head>
@@ -238,37 +168,35 @@
   <div id="app">
     <div class="page-header">
       <h1>账户信息</h1>
-      <p>管理您的个人资料和安全设置</p>
+      <p>管理您的账户设置</p>
     </div>
 
     <div class="settings-container">
-      <!-- 账户信息 -->
+      <!-- 账户名称 -->
       <div class="settings-card">
         <div class="settings-card-header">
           <div class="settings-card-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 20a6 6 0 0 0-12 0"/>
+              <circle cx="12" cy="10" r="4"/>
+              <circle cx="12" cy="12" r="10"/>
             </svg>
           </div>
           <div>
-            <div class="settings-card-title">基本信息</div>
-            <div class="settings-card-subtitle">您的账户基本信息</div>
+            <div class="settings-card-title">账户名称</div>
+            <div class="settings-card-subtitle">当前登录账户</div>
           </div>
         </div>
         <div class="settings-card-body">
-          <div class="user-profile">
-            <div class="user-avatar-large">管</div>
-            <div class="user-profile-info">
-              <div class="user-profile-name">管理员</div>
-              <div class="user-profile-role">超级管理员</div>
+          <div class="setting-item">
+            <div class="setting-info">
+              <div class="account-name">{{ accountName }}</div>
             </div>
-            <t-button theme="primary" variant="outline" size="small">修改资料</t-button>
           </div>
         </div>
       </div>
 
-      <!-- 登录凭证 -->
+      <!-- 记住账户 -->
       <div class="settings-card">
         <div class="settings-card-header">
           <div class="settings-card-icon">
@@ -278,56 +206,44 @@
             </svg>
           </div>
           <div>
-            <div class="settings-card-title">登录凭证</div>
-            <div class="settings-card-subtitle">账户安全相关设置</div>
-          </div>
-        </div>
-        <div class="settings-card-body">
-          <div class="security-item">
-            <div class="security-info">
-              <div class="security-label">账户名称</div>
-              <div class="security-status">admin</div>
-            </div>
-            <t-button theme="default" variant="outline" size="small">修改</t-button>
-          </div>
-          <div class="security-item">
-            <div class="security-info">
-              <div class="security-label">登录密码</div>
-              <div class="security-status">已设置密码保护</div>
-            </div>
-            <t-button theme="default" variant="outline" size="small">修改密码</t-button>
-          </div>
-          <div class="security-item">
-            <div class="security-info">
-              <div class="security-label">记住登录</div>
-              <div class="security-status">下次登录时自动填充账户信息</div>
-            </div>
-            <t-switch v-model="rememberLogin"></t-switch>
-          </div>
-        </div>
-      </div>
-
-      <!-- 会话管理 -->
-      <div class="settings-card">
-        <div class="settings-card-header">
-          <div class="settings-card-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-          </div>
-          <div>
-            <div class="settings-card-title">会话管理</div>
-            <div class="settings-card-subtitle">管理当前登录状态</div>
+            <div class="settings-card-title">记住账户</div>
+            <div class="settings-card-subtitle">下次登录时自动填充账户信息</div>
           </div>
         </div>
         <div class="settings-card-body">
           <div class="setting-item">
             <div class="setting-info">
-              <div class="setting-label">当前会话</div>
-              <div class="setting-desc">查看当前登录设备信息</div>
+              <div class="setting-label">自动填充</div>
+              <div class="setting-desc">下次登录时自动填入账户名和密码</div>
             </div>
             <div class="setting-control">
-              <t-button theme="danger" variant="outline" size="small" @click="logout">退出登录</t-button>
+              <t-switch v-model="rememberAccount"></t-switch>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 修改密码 -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="settings-card-title">修改密码</div>
+            <div class="settings-card-subtitle">更新您的登录密码</div>
+          </div>
+        </div>
+        <div class="settings-card-body">
+          <div class="setting-item">
+            <div class="setting-info">
+              <div class="setting-desc">定期更换密码可以提高账户安全性</div>
+            </div>
+            <div class="setting-control">
+              <t-button theme="primary" variant="outline" size="small" @click="changePassword">修改密码</t-button>
             </div>
           </div>
         </div>
@@ -342,7 +258,8 @@
 
     const App = {
       setup() {
-        const rememberLogin = ref(true);
+        const accountName = ref('admin');
+        const rememberAccount = ref(false);
 
         // 加载保存的设置
         const loadSettings = () => {
@@ -350,42 +267,34 @@
           if (saved) {
             try {
               const credentials = JSON.parse(saved);
-              rememberLogin.value = !!(credentials.username || credentials.password);
+              accountName.value = credentials.username || 'admin';
+              rememberAccount.value = !!(credentials.username || credentials.password);
             } catch (e) {
               console.error('加载设置失败:', e);
             }
           }
         };
 
-        // 保存设置
-        const saveSettings = () => {
-          if (!rememberLogin.value) {
+        // 切换记住账户
+        const toggleRemember = (val) => {
+          const saved = localStorage.getItem('savedCredentials');
+          let credentials = {};
+          if (saved) {
+            try {
+              credentials = JSON.parse(saved);
+            } catch (e) {}
+          }
+          if (val) {
+            credentials.username = accountName.value;
+            localStorage.setItem('savedCredentials', JSON.stringify(credentials));
+          } else {
             localStorage.removeItem('savedCredentials');
           }
         };
 
-        // 监听记住登录变化
-        const onRememberChange = (val) => {
-          rememberLogin.value = val;
-          saveSettings();
-        };
-
-        // 退出登录
-        const logout = () => {
-          TDesign.DialogPlugin.confirm({
-            header: '确认退出登录',
-            body: '退出登录后将返回登录页面，是否继续？',
-            onConfirm: () => {
-              localStorage.removeItem('savedCredentials');
-              // 通知主窗口退出登录
-              if (window.electronAPI?.logout) {
-                window.electronAPI.logout();
-              } else {
-                // 浏览器中直接刷新
-                location.reload();
-              }
-            }
-          });
+        // 修改密码（占位）
+        const changePassword = () => {
+          TDesign.MessagePlugin.info('修改密码功能正在开发中...');
         };
 
         onMounted(() => {
@@ -393,8 +302,9 @@
         });
 
         return {
-          rememberLogin,
-          logout
+          accountName,
+          rememberAccount,
+          changePassword
         };
       }
     };

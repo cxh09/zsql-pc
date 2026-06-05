@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>预约详情 - 智拾清澜工作台</title>
+  <link rel="icon" type="image/svg+xml" href="application-detail.svg">
+  <link rel="stylesheet" href="../libs/tdesign.min.css" />
+  <style>
+    html {
+      visibility: hidden;
+      opacity: 0;
+    }
+    html.loaded {
+      visibility: visible;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--td-bg-color-page);
+      padding: 24px;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    .detail-card {
+      background: var(--td-bg-color-container);
+      border-radius: 8px;
+      border: 1px solid var(--td-border-level-1-color);
+      padding: 24px;
+    }
+
+    /* 加载状态 */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--td-border-level-2-color);
+      border-top-color: var(--td-brand-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 媒体画廊 */
+    .media-gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .media-item {
+      width: 120px;
+      height: 120px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--td-border-level-1-color);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s;
+    }
+
+    .media-item:hover {
+      transform: scale(1.05);
+    }
+
+    .media-item img,
+    .media-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .media-item .video-badge {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* 大图预览遮罩 */
+    .preview-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .preview-overlay img,
+    .preview-overlay video {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+
+    .preview-close {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      color: white;
+      font-size: 28px;
+      line-height: 1;
+      cursor: pointer;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      transition: background 0.2s;
+      z-index: 10000;
+      padding-bottom: 4px;
+    }
+
+    .preview-close:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* 错误状态 */
+    .error-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .error-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 大图/视频预览 -->
+    <div v-if="previewUrl" class="preview-overlay" @click="previewUrl = ''">
+      <div class="preview-close" @click.stop="previewUrl = ''">&times;</div>
+      <img v-if="previewIsImage" :src="previewUrl" @click.stop />
+      <video v-else :src="previewUrl" controls autoplay @click.stop style="max-width:90vw;max-height:90vh;border-radius:8px;"></video>
+    </div>
+
+    <div class="page-header">
+      <h1>预约详情</h1>
+    </div>
+
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <span>正在加载数据...</span>
+    </div>
+
+    <!-- 错误状态 -->
+    <div v-else-if="error" class="error-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="15" y1="9" x2="9" y2="15"/>
+        <line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+      <span>{{ error }}</span>
+      <t-button theme="primary" style="margin-top: 16px;" @click="fetchData">重试</t-button>
+    </div>
+
+    <!-- 详情内容 -->
+    <div v-else-if="item" class="detail-card">
+      <t-descriptions :column="2" bordered>
+        <t-descriptions-item label="预约ID">#{{ item.id }}</t-descriptions-item>
+        <t-descriptions-item label="客户姓名">{{ item.name }}</t-descriptions-item>
+        <t-descriptions-item label="联系电话">{{ item.phone }}</t-descriptions-item>
+        <t-descriptions-item label="物品类型">{{ item.itemType || '-' }}</t-descriptions-item>
+        <t-descriptions-item label="预约日期">{{ item.date }}</t-descriptions-item>
+        <t-descriptions-item label="预约时间">{{ item.time }}</t-descriptions-item>
+        <t-descriptions-item label="打捞位置" :span="2">{{ item.location }}</t-descriptions-item>
+        <t-descriptions-item label="详细描述" :span="2">{{ item.description || '暂无描述' }}</t-descriptions-item>
+        <t-descriptions-item label="提交时间" :span="2">{{ formatDate(item.created_at) }}</t-descriptions-item>
+      </t-descriptions>
+
+      <!-- 图片展示 -->
+      <div v-if="item.images && item.images.length > 0" style="margin-top: 24px;">
+        <div style="font-size:14px;font-weight:600;color:var(--td-text-color-primary);margin-bottom:12px;">
+          上传图片 ({{ item.images.length }})
+        </div>
+        <div class="media-gallery">
+          <div
+            v-for="(img, idx) in item.images"
+            :key="'img-' + idx"
+            class="media-item"
+            @click="openPreview(imgUrl(img))"
+          >
+            <img :src="imgUrl(img)" :alt="'图片' + (idx + 1)" loading="lazy" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 视频展示 -->
+      <div v-if="item.videos && item.videos.length > 0" style="margin-top: 24px;">
+        <div style="font-size:14px;font-weight:600;color:var(--td-text-color-primary);margin-bottom:12px;">
+          上传视频 ({{ item.videos.length }})
+        </div>
+        <div class="media-gallery">
+          <div
+            v-for="(video, idx) in item.videos"
+            :key="'video-' + idx"
+            class="media-item"
+            @click="openPreview(videoUrl(video))"
+          >
+            <video :src="videoUrl(video)" muted preload="metadata"></video>
+            <span class="video-badge">&#9654; 视频</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../libs/vue.global.js"></script>
+  <script src="../libs/tdesign.min.js"></script>
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    const API_BASE = 'http://zsql.2gck.xyz:8080';
+
+    const App = {
+      setup() {
+        const loading = ref(true);
+        const error = ref(null);
+        const item = ref(null);
+        const previewUrl = ref('');
+
+        // 获取URL参数
+        const getUrlParams = () => {
+          const params = new URLSearchParams(window.location.search);
+          return {
+            id: params.get('id')
+          };
+        };
+
+        // 构建完整图片URL
+        const imgUrl = (path) => {
+          if (!path) return '';
+          if (path.startsWith('http')) return path;
+          return API_BASE + path;
+        };
+
+        // 构建完整视频URL
+        const videoUrl = (path) => {
+          if (!path) return '';
+          if (path.startsWith('http')) return path;
+          return API_BASE + path;
+        };
+
+        // 预览是否图片
+        const previewIsImage = computed(() => {
+          if (!previewUrl.value) return true;
+          return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(previewUrl.value);
+        });
+
+        // 打开预览
+        const openPreview = (url) => {
+          previewUrl.value = url;
+        };
+
+        // 格式化日期
+        const formatDate = (dateStr) => {
+          if (!dateStr) return '-';
+          const date = new Date(dateStr);
+          return date.toLocaleString('zh-CN');
+        };
+
+        // 获取数据
+        const fetchData = async () => {
+          loading.value = true;
+          error.value = null;
+
+          const { id } = getUrlParams();
+
+          if (!id) {
+            error.value = '缺少预约ID参数';
+            loading.value = false;
+            return;
+          }
+
+          try {
+            const response = await fetch(`${API_BASE}/form/submissions`);
+            const result = await response.json();
+
+            if (result.code === 200 && Array.isArray(result.data)) {
+              const found = result.data.find(item => item.id == id);
+              if (found) {
+                item.value = found;
+              } else {
+                error.value = '未找到该预约';
+              }
+            } else {
+              error.value = '获取数据失败';
+            }
+          } catch (error) {
+            console.error('获取数据失败:', error);
+            error.value = '网络请求失败';
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        onMounted(() => {
+          fetchData();
+        });
+
+        return {
+          loading,
+          error,
+          item,
+          previewUrl,
+          previewIsImage,
+          imgUrl,
+          videoUrl,
+          openPreview,
+          formatDate
+        };
+      }
+    };
+
+    const app = createApp(App);
+    app.use(TDesign);
+    app.mount('#app');
+
+    window.addEventListener('load', () => {
+      document.documentElement.classList.add('loaded');
+    });
+  </script>
+</body>
+</html>

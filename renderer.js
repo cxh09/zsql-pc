@@ -438,13 +438,18 @@ const App = {
     if (window.electronAPI?.onOpenNewTab) {
       window.electronAPI.onOpenNewTab((url) => {
         let title = '浏览器'
+        let icon = 'home'
         try {
           const urlObj = new URL(url)
           title = urlObj.hostname
         } catch (e) {
           // 使用默认标题
         }
-        openTab(title, url, 'home')
+        // 根据 URL 匹配图标
+        if (url.includes('application-detail') || url.includes('agreement')) {
+          icon = 'doc'
+        }
+        openTab(title, url, icon)
       })
     }
 
@@ -463,8 +468,29 @@ const App = {
       })
     }
 
+    // 监听来自主进程的主题变化请求
+    if (window.electronAPI?.onThemeChange) {
+      window.electronAPI.onThemeChange((theme) => {
+        if (theme === 'dark') {
+          document.documentElement.setAttribute('class', 'tdesign-theme__dark')
+        } else {
+          document.documentElement.setAttribute('class', '')
+        }
+        localStorage.setItem('tdesign-theme', theme)
+      })
+    }
+
     // 挂载后为已有 webview 绑定监听
     nextTick(attachWebviewListeners)
+
+    // 加载保存的主题设置
+    const loadTheme = () => {
+      const theme = localStorage.getItem('tdesign-theme')
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('class', 'tdesign-theme__dark')
+      }
+    }
+    loadTheme()
 
     return {
       // 登录相关

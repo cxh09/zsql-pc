@@ -409,6 +409,19 @@ const App = {
       openTab('更新日志', './pages/changelog.html', 'file', 'changelog')
     }
 
+    const openDevTools = () => {
+      showUserMenu.value = false
+      showMenu.value = false
+      // 获取当前活动的 webview
+      const webview = document.querySelector('webview.active')
+      if (webview && webview.openDevTools) {
+        webview.openDevTools()
+      } else if (window.electronAPI?.openDevTools) {
+        // 如果没有活动的 webview，打开主窗口的开发者工具
+        window.electronAPI.openDevTools()
+      }
+    }
+
     // 点击页面空白处关闭菜单
     const handleClickOutside = (e) => {
       const sidebar = document.querySelector('.sidebar')
@@ -527,6 +540,7 @@ const App = {
       openAccountInfo,
       openUserSettings,
       openChangelog,
+      openDevTools,
 
       // 客户会话
       showCustomerSubmenu,

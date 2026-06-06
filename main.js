@@ -98,3 +98,13 @@ ipcMain.handle('set-theme', (_event, theme) => {
     mainWindow.webContents.send('theme-change', theme)
   }
 })
+
+// 打开当前标签页的开发者工具
+ipcMain.handle('open-devtools', () => {
+  if (mainWindow) {
+    // 获取当前聚焦的 webview
+    const webContents = mainWindow.webContents
+    // 打开主窗口的开发者工具
+    webContents.openDevTools()
+  }
+})

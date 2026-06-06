@@ -222,7 +222,21 @@
         <t-descriptions-item label="物品类型">{{ item.itemType || '-' }}</t-descriptions-item>
         <t-descriptions-item label="预约日期">{{ item.date }}</t-descriptions-item>
         <t-descriptions-item label="预约时间">{{ item.time }}</t-descriptions-item>
-        <t-descriptions-item label="打捞位置" :span="2">{{ item.location }}</t-descriptions-item>
+        <t-descriptions-item label="落水地点" :span="2">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span>{{ item.location }}</span>
+            <t-button
+              v-if="parseCoordinates(item.location)"
+              theme="primary"
+              variant="outline"
+              size="small"
+              @click="openNavigation(item.location)"
+            >
+              <template #icon><t-icon name="location" /></template>
+              导航
+            </t-button>
+          </div>
+        </t-descriptions-item>
         <t-descriptions-item label="详细描述" :span="2">{{ item.description || '暂无描述' }}</t-descriptions-item>
         <t-descriptions-item label="提交时间" :span="2">{{ formatDate(item.created_at) }}</t-descriptions-item>
       </t-descriptions>
@@ -318,6 +332,30 @@
           return date.toLocaleString('zh-CN');
         };
 
+        // 解析坐标
+        const parseCoordinates = (locationStr) => {
+          if (!locationStr) return null;
+          // 匹配格式：纬度: 27.906080, 经度: 112.524143
+          const latMatch = locationStr.match(/纬度[:\s]*([\d.]+)/);
+          const lngMatch = locationStr.match(/经度[:\s]*([\d.]+)/);
+          if (latMatch && lngMatch) {
+            return {
+              lat: parseFloat(latMatch[1]),
+              lng: parseFloat(lngMatch[1])
+            };
+          }
+          return null;
+        };
+
+        // 打开导航页面
+        const openNavigation = (locationStr) => {
+          const coords = parseCoordinates(locationStr);
+          if (coords) {
+            const url = `real-navigation.html?lat=${coords.lat}&lng=${coords.lng}`;
+            window.open(url, '_blank');
+          }
+        };
+
         // 获取数据
         const fetchData = async () => {
           loading.value = true;
@@ -366,7 +404,9 @@
           imgUrl,
           videoUrl,
           openPreview,
-          formatDate
+          formatDate,
+          parseCoordinates,
+          openNavigation
         };
       }
     };

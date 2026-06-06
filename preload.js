@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setTheme: (theme) => ipcRenderer.invoke('set-theme', theme),
   onThemeChange: (callback) => {
     ipcRenderer.on('theme-change', (_event, theme) => callback(theme))
-  }
+  },
+  openDevTools: () => ipcRenderer.invoke('open-devtools')
 })

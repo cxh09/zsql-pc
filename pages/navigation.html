@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>导航 - 智拾清澜工作台</title>
+  <link rel="icon" type="image/svg+xml" href="application-detail.svg">
+  <link rel="stylesheet" href="../libs/tdesign.min.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--td-bg-color-page);
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--td-bg-color-container);
+      border-bottom: 1px solid var(--td-border-level-1-color);
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    .header-info {
+      font-size: 13px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .map-container {
+      flex: 1;
+      position: relative;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--td-bg-color-page);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--td-border-level-2-color);
+      border-top-color: var(--td-brand-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--td-bg-color-page);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .error-overlay svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+      color: var(--td-text-color-secondary);
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .control-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: var(--td-bg-color-container);
+      border: 1px solid var(--td-border-level-1-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+    }
+
+    .control-btn:hover {
+      background: var(--td-bg-color-secondarycontainer);
+    }
+
+    .control-btn svg {
+      width: 20px;
+      height: 20px;
+      color: var(--td-text-color-primary);
+    }
+
+    .route-panel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 320px;
+      background: var(--td-bg-color-container);
+      border-radius: 8px;
+      border: 1px solid var(--td-border-level-1-color);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      z-index: 10;
+      max-height: calc(100% - 32px);
+      overflow-y: auto;
+    }
+
+    .route-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--td-border-level-1-color);
+    }
+
+    .route-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+      margin-bottom: 8px;
+    }
+
+    .route-coords {
+      font-size: 12px;
+      color: var(--td-text-color-secondary);
+      font-family: monospace;
+    }
+
+    .route-form {
+      padding: 16px;
+    }
+
+    .form-item {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      color: var(--td-text-color-secondary);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .route-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .route-result {
+      padding: 16px;
+      border-top: 1px solid var(--td-border-level-1-color);
+    }
+
+    .route-info-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .route-info-label {
+      color: var(--td-text-color-secondary);
+    }
+
+    .route-info-value {
+      color: var(--td-text-color-primary);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="container">
+    <!-- 头部 -->
+    <div class="header">
+      <div class="header-title">导航到落水地点</div>
+      <div class="header-info" v-if="destination">
+        目标：{{ destination.lat.toFixed(6) }}, {{ destination.lng.toFixed(6) }}
+      </div>
+    </div>
+
+    <!-- 地图容器 -->
+    <div class="map-container">
+      <!-- 加载中 -->
+      <div v-if="loading" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <span style="color: var(--td-text-color-secondary);">正在加载地图...</span>
+      </div>
+
+      <!-- 错误提示 -->
+      <div v-if="error" class="error-overlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        <p style="color: var(--td-text-color-secondary); margin-bottom: 16px;">{{ error }}</p>
+        <t-button theme="primary" @click="initMap">重新加载</t-button>
+      </div>
+
+      <div id="map"></div>
+
+      <!-- 路线规划面板 -->
+      <div class="route-panel" v-if="!loading && !error">
+        <div class="route-header">
+          <div class="route-title">路线规划</div>
+          <div class="route-coords">目标坐标: {{ destination.lat.toFixed(6) }}, {{ destination.lng.toFixed(6) }}</div>
+        </div>
+
+        <div class="route-form">
+          <div class="form-item">
+            <label class="form-label">起点</label>
+            <t-radio-group v-model="startType" variant="default-filled">
+              <t-radio-button value="current">当前位置</t-radio-button>
+              <t-radio-button value="custom">自定义</t-radio-button>
+            </t-radio-group>
+          </div>
+
+          <div class="form-item" v-if="startType === 'custom'">
+            <t-input
+              v-model="customStart"
+              placeholder="输入起点地址"
+              clearable
+            />
+          </div>
+
+          <div class="form-item">
+            <label class="form-label">出行方式</label>
+            <t-radio-group v-model="travelMode" variant="default-filled">
+              <t-radio-button value="driving">驾车</t-radio-button>
+              <t-radio-button value="walking">步行</t-radio-button>
+              <t-radio-button value="riding">骑行</t-radio-button>
+            </t-radio-group>
+          </div>
+
+          <div class="route-actions">
+            <t-button theme="primary" block @click="planRoute" :loading="planning">规划路线</t-button>
+            <t-button theme="default" block @click="clearRoute">清除</t-button>
+          </div>
+        </div>
+
+        <!-- 路线结果 -->
+        <div class="route-result" v-if="routeInfo">
+          <div class="route-info-item">
+            <span class="route-info-label">距离：</span>
+            <span class="route-info-value">{{ routeInfo.distance }}公里</span>
+          </div>
+          <div class="route-info-item">
+            <span class="route-info-label">预计时间：</span>
+            <span class="route-info-value">{{ routeInfo.duration }}</span>
+          </div>
+          <div style="margin-top: 16px; display: flex; gap: 8px;">
+            <t-button theme="primary" block size="large" @click="startRealNavigation" :loading="realNavigating" :disabled="realNavigating">
+              <template #icon><t-icon name="location" /></template>
+              {{ realNavigating ? '导航中...' : '开始导航' }}
+            </t-button>
+            <t-button v-if="realNavigating" theme="danger" block size="large" @click="stopRealNavigation">
+              <template #icon><t-icon name="stop" /></template>
+              结束导航
+            </t-button>
+          </div>
+        </div>
+
+        <!-- 实时导航信息 -->
+        <div class="route-result" v-if="realNavigating && currentNavInfo" style="background: var(--td-brand-color-light); border: 1px solid var(--td-brand-color);">
+          <div style="font-size: 16px; font-weight: 600; color: var(--td-brand-color); margin-bottom: 8px;">
+            {{ currentNavInfo.action }}
+          </div>
+          <div class="route-info-item">
+            <span class="route-info-label">下一动作：</span>
+            <span class="route-info-value">{{ currentNavInfo.nextAction || '直行' }}</span>
+          </div>
+          <div class="route-info-item">
+            <span class="route-info-label">剩余距离：</span>
+            <span class="route-info-value">{{ currentNavInfo.remainDistance }}米</span>
+          </div>
+          <div class="route-info-item">
+            <span class="route-info-label">当前速度：</span>
+            <span class="route-info-value">{{ currentNavInfo.speed }} km/h</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 地图控制按钮 -->
+      <div class="controls">
+        <div class="control-btn" @click="locateCurrent" title="定位到当前位置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+          </svg>
+        </div>
+        <div class="control-btn" @click="fitView" title="适应视图">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../libs/vue.global.js"></script>
+  <script src="../libs/tdesign.min.js"></script>
+  <!-- 高德地图安全密钥配置 - 必须在加载地图API之前设置 -->
+  <script>
+    window._AMapSecurityConfig = {
+      securityJsCode: 'ecf39a8551186d56cccd994741cace3d'
+    };
+  </script>
+  <!-- 高德地图 JS API 2.0 -->
+  <script src="https://webapi.amap.com/maps?v=2.0&key=bdece4937f3eb25bd1e8cc0a01fead2b&plugin=AMap.Driving,AMap.Walking,AMap.Riding,AMap.Geolocation,AMap.ToolBar,AMap.Geocoder"></script>
+  <script>
+    const { createApp, ref, onMounted } = Vue;
+
+    const App = {
+      setup() {
+        const loading = ref(true);
+        const error = ref(null);
+        const map = ref(null);
+        const destination = ref(null);
+        const startType = ref('current');
+        const customStart = ref('');
+        const travelMode = ref('driving');
+        const planning = ref(false);
+        const routeInfo = ref(null);
+        const currentPosition = ref(null);
+        const markers = ref([]);
+        const routePlugin = ref(null);
+        const simulating = ref(false);
+        const moveAnimation = ref(null);
+        const currentRoutePath = ref([]);
+        const realNavigating = ref(false);
+        const currentNavInfo = ref(null);
+        const watchPositionId = ref(null);
+        const navMarker = ref(null);
+        const routeSteps = ref([]);
+        const currentStepIndex = ref(0);
+
+        // 获取URL参数
+        const getUrlParams = () => {
+          const params = new URLSearchParams(window.location.search);
+          return {
+            lat: parseFloat(params.get('lat')),
+            lng: parseFloat(params.get('lng'))
+          };
+        };
+
+        // 初始化地图
+        const initMap = () => {
+          loading.value = true;
+          error.value = null;
+
+          try {
+            const coords = getUrlParams();
+            if (!coords.lat || !coords.lng) {
+              error.value = '缺少坐标参数';
+              loading.value = false;
+              return;
+            }
+
+            destination.value = coords;
+
+            // 检查高德地图 API 是否加载
+            if (typeof AMap === 'undefined') {
+              error.value = '地图加载失败，请检查网络连接';
+              loading.value = false;
+              return;
+            }
+
+            // 创建地图
+            map.value = new AMap.Map('map', {
+              zoom: 14,
+              center: [coords.lng, coords.lat],
+              viewMode: '2D'
+            });
+
+            // 添加目标点标记
+            const destMarker = new AMap.Marker({
+              position: [coords.lng, coords.lat],
+              title: '落水地点',
+              icon: new AMap.Icon({
+                size: new AMap.Size(32, 32),
+                image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png',
+                imageSize: new AMap.Size(32, 32)
+              }),
+              label: {
+                content: '落水地点',
+                direction: 'top'
+              }
+            });
+            map.value.add(destMarker);
+            markers.value.push(destMarker);
+
+            // 添加地图控件
+            map.value.addControl(new AMap.ToolBar({
+              position: 'RB'
+            }));
+
+            // 获取当前位置
+            getCurrentPosition();
+
+            loading.value = false;
+          } catch (err) {
+            console.error('地图初始化失败:', err);
+            error.value = '地图初始化失败: ' + err.message;
+            loading.value = false;
+          }
+        };
+
+        // 获取当前位置
+        const getCurrentPosition = () => {
+          if (!map.value) return;
+
+          const geolocation = new AMap.Geolocation({
+            enableHighAccuracy: true,
+            timeout: 10000,
+            buttonPosition: 'RB',
+            buttonOffset: new AMap.Pixel(10, 20),
+            zoomToAccuracy: true
+          });
+
+          map.value.addControl(geolocation);
+
+          geolocation.getCurrentPosition((status, result) => {
+            if (status === 'complete') {
+              currentPosition.value = {
+                lng: result.position.lng,
+                lat: result.position.lat
+              };
+
+              // 添加当前位置标记
+              const currentMarker = new AMap.Marker({
+                position: [result.position.lng, result.position.lat],
+                title: '当前位置',
+                icon: new AMap.Icon({
+                  size: new AMap.Size(32, 32),
+                  image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+                  imageSize: new AMap.Size(32, 32)
+                }),
+                label: {
+                  content: '当前位置',
+                  direction: 'top'
+                }
+              });
+              map.value.add(currentMarker);
+              markers.value.push(currentMarker);
+            }
+          });
+        };
+
+        // 定位到当前位置
+        const locateCurrent = () => {
+          if (currentPosition.value && map.value) {
+            map.value.setCenter([currentPosition.value.lng, currentPosition.value.lat]);
+          }
+        };
+
+        // 适应视图
+        const fitView = () => {
+          if (map.value && markers.value.length > 0) {
+            map.value.setFitView(markers.value);
+          }
+        };
+
+        // 规划路线
+        const planRoute = () => {
+          if (!map.value || !destination.value) return;
+
+          planning.value = true;
+          routeInfo.value = null;
+
+          // 清除之前的路线
+          if (routePlugin.value) {
+            routePlugin.value.clear();
+            routePlugin.value = null;
+          }
+
+          let startPoint;
+
+          if (startType.value === 'current' && currentPosition.value) {
+            startPoint = [currentPosition.value.lng, currentPosition.value.lat];
+            doPlanRoute(startPoint);
+          } else if (startType.value === 'custom' && customStart.value) {
+            // 使用地理编码解析地址
+            AMap.plugin('AMap.Geocoder', () => {
+              const geocoder = new AMap.Geocoder();
+              geocoder.getLocation(customStart.value, (status, result) => {
+                if (status === 'complete' && result.geocodes.length) {
+                  const lnglat = result.geocodes[0].location;
+                  startPoint = [lnglat.lng, lnglat.lat];
+                  doPlanRoute(startPoint);
+                } else {
+                  alert('地址解析失败');
+                  planning.value = false;
+                }
+              });
+            });
+          } else {
+            alert('请选择起点');
+            planning.value = false;
+          }
+        };
+
+        // 执行路线规划
+        const doPlanRoute = (startPoint) => {
+          const endPoint = [destination.value.lng, destination.value.lat];
+
+          const executeSearch = () => {
+            routePlugin.value.search(startPoint, endPoint, (status, result) => {
+              planning.value = false;
+
+              if (status === 'complete') {
+                console.log('路线规划结果:', result);
+                const route = result.routes && result.routes[0];
+                if (route) {
+                  routeInfo.value = {
+                    distance: (route.distance / 1000).toFixed(2),
+                    duration: formatDuration(route.time)
+                  };
+                  // 保存路线路径点用于模拟导航
+                  saveRoutePath(route);
+                } else {
+                  alert('未找到路线');
+                }
+              } else {
+                console.error('路线规划失败:', status, result);
+                alert('路线规划失败: ' + (result && result.info ? result.info : status));
+              }
+            });
+          };
+
+          // 保存路线路径点
+          const saveRoutePath = (route) => {
+            currentRoutePath.value = [];
+            routeSteps.value = [];
+            if (route.steps && route.steps.length > 0) {
+              route.steps.forEach((step, index) => {
+                // 保存步骤信息用于导航
+                routeSteps.value.push({
+                  index: index,
+                  action: step.action || '直行',
+                  instruction: step.instruction || '',
+                  distance: step.distance,
+                  duration: step.time,
+                  startPoint: step.start_location,
+                  endPoint: step.end_location
+                });
+                if (step.path && step.path.length > 0) {
+                  step.path.forEach(point => {
+                    currentRoutePath.value.push([point.lng, point.lat]);
+                  });
+                }
+              });
+            }
+          };
+
+          // 根据出行方式加载对应插件
+          let pluginName;
+          switch (travelMode.value) {
+            case 'walking':
+              pluginName = 'AMap.Walking';
+              break;
+            case 'riding':
+              pluginName = 'AMap.Riding';
+              break;
+            case 'driving':
+            default:
+              pluginName = 'AMap.Driving';
+              break;
+          }
+
+          // 异步加载插件
+          AMap.plugin(pluginName, () => {
+            switch (travelMode.value) {
+              case 'walking':
+                routePlugin.value = new AMap.Walking({
+                  map: map.value,
+                  panel: false
+                });
+                break;
+              case 'riding':
+                routePlugin.value = new AMap.Riding({
+                  map: map.value,
+                  panel: false
+                });
+                break;
+              case 'driving':
+              default:
+                routePlugin.value = new AMap.Driving({
+                  map: map.value,
+                  panel: false
+                });
+                break;
+            }
+            executeSearch();
+          });
+        };
+
+        // 格式化时间
+        const formatDuration = (seconds) => {
+          const hours = Math.floor(seconds / 3600);
+          const minutes = Math.floor((seconds % 3600) / 60);
+          if (hours > 0) {
+            return `${hours}小时${minutes}分钟`;
+          }
+          return `${minutes}分钟`;
+        };
+
+        // 清除路线
+        const clearRoute = () => {
+          if (routePlugin.value) {
+            routePlugin.value.clear();
+            routePlugin.value = null;
+          }
+          routeInfo.value = null;
+        };
+
+        // 开始导航 - 跳转到高德地图导航
+        const startNavigation = () => {
+          if (!destination.value) return;
+
+          const lat = destination.value.lat;
+          const lng = destination.value.lng;
+
+          // 构建高德地图导航URL
+          // 使用高德地图网页版导航
+          const navUrl = `https://uri.amap.com/navigation?to=${lng},${lat},落水地点&mode=${travelMode.value}&coordinate=gaode&callnative=1`;
+
+          // 打开新窗口进行导航
+          window.open(navUrl, '_blank');
+        };
+
+        // 开始模拟导航
+        const startSimulateNavigation = () => {
+          if (currentRoutePath.value.length === 0) {
+            alert('请先规划路线');
+            return;
+          }
+
+          // 停止之前的动画
+          if (moveAnimation.value) {
+            moveAnimation.value.stop();
+          }
+
+          simulating.value = true;
+
+          // 创建移动标记
+          const startPoint = currentRoutePath.value[0];
+          const navMarker = new AMap.Marker({
+            position: startPoint,
+            icon: new AMap.Icon({
+              size: new AMap.Size(32, 32),
+              image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+              imageSize: new AMap.Size(32, 32)
+            }),
+            offset: new AMap.Pixel(-16, -32),
+            autoRotation: true
+          });
+          map.value.add(navMarker);
+
+          // 使用 MoveAnimation 插件进行轨迹回放
+          AMap.plugin('AMap.MoveAnimation', () => {
+            moveAnimation.value = new AMap.MoveAnimation({
+              map: map.value,
+              marker: navMarker,
+              path: currentRoutePath.value,
+              speed: 200, // 速度，单位：米/秒
+              circlable: false,
+              autoRotation: true
+            });
+
+            moveAnimation.value.on('complete', () => {
+              simulating.value = false;
+              alert('导航结束，已到达目的地');
+              map.value.remove(navMarker);
+            });
+
+            moveAnimation.value.on('stop', () => {
+              simulating.value = false;
+            });
+
+            moveAnimation.value.start();
+          });
+        };
+
+        // 停止模拟导航
+        const stopSimulateNavigation = () => {
+          if (moveAnimation.value) {
+            moveAnimation.value.stop();
+          }
+          simulating.value = false;
+        };
+
+        // 开始真实导航
+        const startRealNavigation = () => {
+          if (routeSteps.value.length === 0) {
+            alert('请先规划路线');
+            return;
+          }
+
+          realNavigating.value = true;
+          currentStepIndex.value = 0;
+
+          // 创建导航标记
+          if (currentPosition.value) {
+            navMarker.value = new AMap.Marker({
+              position: [currentPosition.value.lng, currentPosition.value.lat],
+              icon: new AMap.Icon({
+                size: new AMap.Size(32, 32),
+                image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+                imageSize: new AMap.Size(32, 32)
+              }),
+              offset: new AMap.Pixel(-16, -32),
+              autoRotation: true
+            });
+            map.value.add(navMarker.value);
+          }
+
+          // 开始监听位置变化
+          if ('geolocation' in navigator) {
+            watchPositionId.value = navigator.geolocation.watchPosition(
+              (position) => {
+                updateNavigation(position);
+              },
+              (error) => {
+                console.error('定位失败:', error);
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+              }
+            );
+          } else {
+            alert('浏览器不支持地理定位');
+            realNavigating.value = false;
+          }
+
+          // 语音播报开始导航
+          speak('开始导航，请按路线行驶');
+        };
+
+        // 更新导航信息
+        const updateNavigation = (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const speed = position.coords.speed || 0;
+
+          // 更新当前位置标记
+          if (navMarker.value) {
+            navMarker.value.setPosition([lng, lat]);
+          }
+
+          // 更新地图中心
+          map.value.setCenter([lng, lat]);
+
+          // 计算到下一步的距离
+          if (currentStepIndex.value < routeSteps.value.length) {
+            const currentStep = routeSteps.value[currentStepIndex.value];
+            const distance = calculateDistance(lat, lng, currentStep.endPoint.lat, currentStep.endPoint.lng);
+
+            // 更新导航信息
+            currentNavInfo.value = {
+              action: currentStep.action,
+              nextAction: routeSteps.value[currentStepIndex.value + 1]?.action || '到达目的地',
+              remainDistance: Math.round(distance),
+              speed: Math.round(speed * 3.6) // 转换为 km/h
+            };
+
+            // 如果距离下一步小于50米，进入下一步
+            if (distance < 50) {
+              currentStepIndex.value++;
+              if (currentStepIndex.value < routeSteps.value.length) {
+                const nextStep = routeSteps.value[currentStepIndex.value];
+                speak(`前方${nextStep.action}，${nextStep.instruction}`);
+              } else {
+                speak('导航结束，已到达目的地');
+                stopRealNavigation();
+              }
+            }
+          }
+        };
+
+        // 计算两点间距离（米）
+        const calculateDistance = (lat1, lng1, lat2, lng2) => {
+          const R = 6371000; // 地球半径（米）
+          const dLat = (lat2 - lat1) * Math.PI / 180;
+          const dLng = (lng2 - lng1) * Math.PI / 180;
+          const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          return R * c;
+        };
+
+        // 语音播报
+        const speak = (text) => {
+          if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 1;
+            window.speechSynthesis.speak(utterance);
+          }
+        };
+
+        // 停止真实导航
+        const stopRealNavigation = () => {
+          if (watchPositionId.value) {
+            navigator.geolocation.clearWatch(watchPositionId.value);
+            watchPositionId.value = null;
+          }
+          if (navMarker.value) {
+            map.value.remove(navMarker.value);
+            navMarker.value = null;
+          }
+          realNavigating.value = false;
+          currentNavInfo.value = null;
+          currentStepIndex.value = 0;
+          speak('导航已结束');
+        };
+
+        onMounted(() => {
+          // 延迟初始化地图，确保高德 API 加载完成
+          setTimeout(() => {
+            initMap();
+          }, 500);
+        });
+
+        return {
+          loading,
+          error,
+          destination,
+          startType,
+          customStart,
+          travelMode,
+          planning,
+          routeInfo,
+          routePlugin,
+          simulating,
+          realNavigating,
+          currentNavInfo,
+          initMap,
+          locateCurrent,
+          fitView,
+          planRoute,
+          clearRoute,
+          startNavigation,
+          startSimulateNavigation,
+          stopSimulateNavigation,
+          startRealNavigation,
+          stopRealNavigation
+        };
+      }
+    };
+
+    const app = createApp(App);
+    app.use(TDesign);
+    app.mount('#app');
+  </script>
+</body>
+</html>

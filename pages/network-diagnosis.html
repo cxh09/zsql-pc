@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网络质量监测 - 智拾清澜</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231890ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='16' y='16' width='6' height='6' rx='1'/%3E%3Crect x='2' y='16' width='6' height='6' rx='1'/%3E%3Crect x='9' y='2' width='6' height='6' rx='1'/%3E%3Cpath d='M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3'/%3E%3Cpath d='M12 12V8'/%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="stylesheet" href="../libs/tdesign.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--td-bg-color-page);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .page-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .status-overview {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .status-card {
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .status-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .status-icon-wrapper {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 28px;
+    }
+
+    .status-label {
+      font-size: 13px;
+      color: var(--td-text-color-secondary);
+      margin-bottom: 4px;
+    }
+
+    .status-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    .status-desc {
+      font-size: 12px;
+      color: var(--td-text-color-secondary);
+      margin-top: 4px;
+    }
+
+    .server-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .server-metric {
+      text-align: center;
+    }
+
+    .server-metric-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+    }
+
+    .server-metric-label {
+      font-size: 12px;
+      color: var(--td-text-color-secondary);
+      margin-top: 4px;
+    }
+
+    .history-empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--td-text-color-secondary);
+    }
+
+    :deep(.t-card__title) {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="page-container">
+      <!-- 页面标题 -->
+      <div class="page-header">
+        <h1 class="page-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg>
+          网络质量监测
+        </h1>
+        <p class="page-subtitle">检测您的网络连接状态，包括到智拾清澜服务器和第三方网站的连通性</p>
+      </div>
+
+      <!-- 操作栏 -->
+      <div class="action-bar">
+        <t-button theme="primary" size="medium" :loading="isTesting" @click="startTest">
+          <template #icon><t-icon name="play"></t-icon></template>
+          {{ isTesting ? '测试中...' : '开始测试' }}
+        </t-button>
+        <t-button theme="default" size="medium" @click="clearHistory" :disabled="testHistory.length === 0">
+          <template #icon><t-icon name="delete"></t-icon></template>
+          清除历史
+        </t-button>
+      </div>
+
+      <!-- 状态概览 -->
+      <t-card title="网络状态概览" :subtitle="isTesting ? '测试中...' : (lastTestTime || '尚未测试')" class="status-overview-card" style="margin-bottom: 20px;">
+        <template #actions>
+          <t-tag v-if="isTesting" theme="primary" variant="light">测试中</t-tag>
+          <t-tag v-else :theme="getStatusTheme(overallStatus)" variant="light">{{ overallStatusText }}</t-tag>
+        </template>
+        
+        <div v-if="isTesting" class="status-overview">
+          <t-card v-for="n in 4" :key="n" class="status-card testing" :bordered="true" size="small">
+            <div class="status-icon-wrapper" style="background: var(--td-brand-color-light); color: var(--td-brand-color);">
+              <t-icon name="loading" size="28px"></t-icon>
+            </div>
+            <div class="status-label">
+              {{ n === 1 ? '整体状态' : n === 2 ? '平均延迟' : n === 3 ? '丢包率' : '连通性' }}
+            </div>
+            <div class="status-value" style="font-size: 16px;">测试中</div>
+            <div class="status-desc">请稍候...</div>
+          </t-card>
+        </div>
+
+        <div v-else class="status-overview">
+          <t-card :class="['status-card', overallStatus]" :bordered="true" size="small">
+            <div class="status-icon-wrapper" :style="{ background: getStatusIconBg(overallStatus), color: getStatusIconColor(overallStatus) }">
+              <t-icon :name="getStatusIcon(overallStatus)" size="28px"></t-icon>
+            </div>
+            <div class="status-label">整体状态</div>
+            <div class="status-value">{{ overallStatusText }}</div>
+            <div class="status-desc">{{ overallStatusDesc }}</div>
+          </t-card>
+
+          <t-card :class="['status-card', latencyStatus]" :bordered="true" size="small">
+            <div class="status-icon-wrapper" :style="{ background: getStatusIconBg(latencyStatus), color: getStatusIconColor(latencyStatus) }">
+              <t-icon name="time" size="28px"></t-icon>
+            </div>
+            <div class="status-label">平均延迟</div>
+            <div class="status-value">{{ averageLatency }}ms</div>
+            <div class="status-desc">{{ latencyStatusDesc }}</div>
+          </t-card>
+
+          <t-card :class="['status-card', packetLossStatus]" :bordered="true" size="small">
+            <div class="status-icon-wrapper" :style="{ background: getStatusIconBg(packetLossStatus), color: getStatusIconColor(packetLossStatus) }">
+              <t-icon name="chart-bubble" size="28px"></t-icon>
+            </div>
+            <div class="status-label">丢包率</div>
+            <div class="status-value">{{ averagePacketLoss }}%</div>
+            <div class="status-desc">{{ packetLossStatusDesc }}</div>
+          </t-card>
+
+          <t-card :class="['status-card', connectivityStatus]" :bordered="true" size="small">
+            <div class="status-icon-wrapper" :style="{ background: getStatusIconBg(connectivityStatus), color: getStatusIconColor(connectivityStatus) }">
+              <t-icon name="globe" size="28px"></t-icon>
+            </div>
+            <div class="status-label">连通性</div>
+            <div class="status-value">{{ connectedServers }}/{{ totalServers }}</div>
+            <div class="status-desc">服务器在线数</div>
+          </t-card>
+        </div>
+      </t-card>
+
+      <!-- 服务器测试详情 -->
+      <t-card title="服务器连通性测试" style="margin-bottom: 20px;">
+        <template #title>
+          <t-icon name="server" style="margin-right: 8px;"></t-icon>
+          服务器连通性测试
+        </template>
+        
+        <div class="server-list">
+          <t-card v-for="server in servers" :key="server.id" :bordered="true" size="small" hover-shadow style="margin-bottom: 16px;">
+            <!-- 第一行：服务器信息和状态 -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--td-border-level-1-color);">
+              <t-space align="center">
+                <div>
+                  <div style="font-weight: 600; font-size: 15px;">{{ server.name }}</div>
+                  <div style="font-size: 12px; color: var(--td-text-color-secondary);">{{ server.url }}</div>
+                </div>
+              </t-space>
+              
+              <t-tag v-if="isTesting" theme="primary" variant="light">
+                <t-loading size="small" text="测试中..."></t-loading>
+              </t-tag>
+              <t-tag v-else-if="server.status === 'online'" theme="success" variant="light">
+                <t-icon name="check-circle-filled" style="margin-right: 4px;"></t-icon>正常
+              </t-tag>
+              <t-tag v-else theme="danger" variant="light">
+                <t-icon name="close-circle-filled" style="margin-right: 4px;"></t-icon>异常
+              </t-tag>
+            </div>
+            
+            <!-- 第二行：测试进度或指标 -->
+            <!-- 测试中状态：只显示进度条，不显示结果 -->
+            <div v-if="isTesting">
+              <t-progress :percentage="server.progress" :color="getProgressColor(server.quality)"></t-progress>
+            </div>
+            
+            <!-- 测试完成状态：显示结果 -->
+            <div v-else-if="!isTesting && server.status === 'online' && server.latency !== null" style="display: flex; justify-content: space-around; align-items: center;">
+              <!-- 延迟卡片 -->
+              <div style="text-align: center; padding: 12px 24px; background: var(--td-bg-color-page); border-radius: 8px; min-width: 100px;">
+                <div style="font-size: 24px; font-weight: 600;" :style="{ color: getMetricColor(server.latency, 'latency') }">{{ server.latency }}<span style="font-size: 14px; margin-left: 2px;">ms</span></div>
+                <div style="font-size: 12px; color: var(--td-text-color-secondary); margin-top: 4px;">延迟</div>
+              </div>
+              
+              <!-- 抖动卡片 -->
+              <div style="text-align: center; padding: 12px 24px; background: var(--td-bg-color-page); border-radius: 8px; min-width: 100px;">
+                <div style="font-size: 24px; font-weight: 600;" :style="{ color: getMetricColor(server.jitter, 'jitter') }">{{ server.jitter }}<span style="font-size: 14px; margin-left: 2px;">ms</span></div>
+                <div style="font-size: 12px; color: var(--td-text-color-secondary); margin-top: 4px;">抖动</div>
+              </div>
+              
+              <!-- 丢包卡片 -->
+              <div style="text-align: center; padding: 12px 24px; background: var(--td-bg-color-page); border-radius: 8px; min-width: 100px;">
+                <div style="font-size: 24px; font-weight: 600;" :style="{ color: server.packetLoss === 0 ? 'var(--td-success-color)' : 'var(--td-error-color)' }">{{ server.packetLoss }}<span style="font-size: 14px; margin-left: 2px;">%</span></div>
+                <div style="font-size: 12px; color: var(--td-text-color-secondary); margin-top: 4px;">丢包</div>
+              </div>
+            </div>
+            
+            <!-- 离线状态：测试完成后显示 -->
+            <t-alert v-else-if="!isTesting && server.status === 'offline'" theme="error" message="无法连接到服务器，请检查网络连接" size="small"></t-alert>
+            
+            <!-- 初始状态或等待测试完成 -->
+            <div v-else style="text-align: center; padding: 20px; color: var(--td-text-color-secondary);">
+              <t-icon name="loading" style="margin-right: 8px;"></t-icon>
+              等待测试完成...
+            </div>
+          </t-card>
+        </div>
+      </t-card>
+
+      <!-- 测试历史 -->
+      <t-card v-if="testHistory.length > 0" title="测试历史" style="margin-bottom: 20px;">
+        <template #title>
+          <t-icon name="history" style="margin-right: 8px;"></t-icon>
+          测试历史
+        </template>
+        
+        <t-list :split="true">
+          <t-list-item v-for="(item, index) in testHistory" :key="index">
+            <t-row align="middle" style="width: 100%;">
+              <t-col :span="6">
+                <span style="color: var(--td-text-color-secondary);">{{ item.time }}</span>
+              </t-col>
+              <t-col :span="18">
+                <t-space>
+                  <span>平均延迟: <strong>{{ item.avgLatency }}ms</strong></span>
+                  <span>丢包率: <strong>{{ item.packetLoss }}%</strong></span>
+                  <t-tag :theme="getStatusTheme(item.status)" variant="light">{{ item.statusText }}</t-tag>
+                </t-space>
+              </t-col>
+            </t-row>
+          </t-list-item>
+        </t-list>
+      </t-card>
+
+      <!-- 使用提示 -->
+      <t-alert theme="info" title="使用说明" :message="tipsMessage" :close="false">
+        <template #icon><t-icon name="info-circle-filled"></t-icon></template>
+      </t-alert>
+    </div>
+  </div>
+
+  <script src="../libs/vue.global.js"></script>
+  <script src="../libs/tdesign.min.js"></script>
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        // 测试状态 - 初始为 true，页面加载即开始测试
+        const isTesting = ref(true);
+        const lastTestTime = ref('');
+        const testHistory = ref([]);
+
+        // 服务器列表
+        const servers = ref([
+          {
+            id: 'qinglan',
+            name: '智拾清澜服务器',
+            url: 'zsql.2gck.xyz',
+            icon: '',
+            status: 'testing',
+            latency: null,
+            jitter: null,
+            packetLoss: null,
+            progress: 0,
+            quality: 'good'
+          },
+          {
+            id: 'baidu',
+            name: '百度',
+            url: 'www.baidu.com',
+            icon: '',
+            status: 'testing',
+            latency: null,
+            jitter: null,
+            packetLoss: null,
+            progress: 0,
+            quality: 'good'
+          },
+          {
+            id: 'bilibili',
+            name: '哔哩哔哩',
+            url: 'www.bilibili.com',
+            icon: '',
+            status: 'testing',
+            latency: null,
+            jitter: null,
+            packetLoss: null,
+            progress: 0,
+            quality: 'good'
+          }
+        ]);
+
+        // 提示信息
+        const tipsMessage = ref('延迟 (Latency): 数据包往返时间，数值越小越好。100ms 以内为优秀（绿色），100-200ms 为一般（黄色），超过 200ms 较差（红色）。抖动 (Jitter): 延迟变化幅度，数值越小网络越稳定。低于 10ms 为优秀。丢包率 (Packet Loss): 丢失数据包比例，应为 0%。出现丢包可能影响使用体验。');
+
+        // 计算属性：整体状态
+        const overallStatus = computed(() => {
+          // 如果正在测试中，返回 testing 状态
+          if (isTesting.value) return 'testing';
+
+          const onlineServers = servers.value.filter(s => s.status === 'online').length;
+          if (onlineServers === 0) return 'poor';
+          if (onlineServers < servers.value.length) return 'fair';
+
+          const avgLatency = averageLatency.value;
+          if (avgLatency < 50) return 'excellent';
+          if (avgLatency < 100) return 'good';
+          if (avgLatency < 200) return 'fair';
+          return 'poor';
+        });
+
+        const overallStatusText = computed(() => {
+          const status = overallStatus.value;
+          const texts = {
+            testing: '测试中',
+            excellent: '极佳',
+            good: '良好',
+            fair: '一般',
+            poor: '较差'
+          };
+          return texts[status] || '未知';
+        });
+
+        const overallStatusDesc = computed(() => {
+          const status = overallStatus.value;
+          const descs = {
+            testing: '正在检测网络连接质量，请稍候...',
+            excellent: '网络连接质量优秀',
+            good: '网络连接质量良好',
+            fair: '网络连接质量一般',
+            poor: '网络连接质量较差'
+          };
+          return descs[status] || '请进行测试';
+        });
+
+        // 计算属性：延迟状态
+        const averageLatency = computed(() => {
+          const onlineServers = servers.value.filter(s => s.status === 'online' && s.latency !== null);
+          if (onlineServers.length === 0) return '--';
+          const avg = onlineServers.reduce((sum, s) => sum + s.latency, 0) / onlineServers.length;
+          return Math.round(avg);
+        });
+
+        const latencyStatus = computed(() => {
+          if (isTesting.value) return 'testing';
+          const avg = averageLatency.value;
+          if (avg === '--') return 'poor';
+          if (avg < 50) return 'excellent';
+          if (avg < 100) return 'good';
+          if (avg < 200) return 'fair';
+          return 'poor';
+        });
+
+        const latencyStatusDesc = computed(() => {
+          if (isTesting.value) return '正在测试...';
+          const avg = averageLatency.value;
+          if (avg === '--') return '尚未测试';
+          if (avg < 50) return '延迟极低';
+          if (avg < 100) return '延迟较低';
+          if (avg < 200) return '延迟中等';
+          return '延迟较高';
+        });
+
+        // 计算属性：丢包状态
+        const averagePacketLoss = computed(() => {
+          const onlineServers = servers.value.filter(s => s.status === 'online' && s.packetLoss !== null);
+          if (onlineServers.length === 0) return '--';
+          const avg = onlineServers.reduce((sum, s) => sum + s.packetLoss, 0) / onlineServers.length;
+          return avg.toFixed(1);
+        });
+
+        const packetLossStatus = computed(() => {
+          if (isTesting.value) return 'testing';
+          const avg = parseFloat(averagePacketLoss.value);
+          if (isNaN(avg)) return 'poor';
+          if (avg === 0) return 'excellent';
+          if (avg < 1) return 'good';
+          if (avg < 5) return 'fair';
+          return 'poor';
+        });
+
+        const packetLossStatusDesc = computed(() => {
+          if (isTesting.value) return '正在测试...';
+          const avg = parseFloat(averagePacketLoss.value);
+          if (isNaN(avg)) return '尚未测试';
+          if (avg === 0) return '无丢包';
+          if (avg < 1) return '丢包极少';
+          if (avg < 5) return '有少量丢包';
+          return '丢包严重';
+        });
+
+        // 计算属性：连通性
+        const connectedServers = computed(() => {
+          return servers.value.filter(s => s.status === 'online').length;
+        });
+
+        const totalServers = computed(() => servers.value.length);
+
+        const connectivityStatus = computed(() => {
+          if (isTesting.value) return 'testing';
+          const ratio = connectedServers.value / totalServers.value;
+          if (ratio === 1) return 'excellent';
+          if (ratio >= 0.7) return 'good';
+          if (ratio >= 0.4) return 'fair';
+          return 'poor';
+        });
+
+        // 获取状态主题色
+        const getStatusTheme = (status) => {
+          const themes = {
+            testing: 'primary',
+            excellent: 'success',
+            good: 'primary',
+            fair: 'warning',
+            poor: 'danger'
+          };
+          return themes[status] || 'default';
+        };
+
+        // 获取状态图标
+        const getStatusIcon = (status) => {
+          const icons = {
+            testing: 'loading',
+            excellent: 'check-circle-filled',
+            good: 'check-circle',
+            fair: 'error-circle',
+            poor: 'close-circle-filled'
+          };
+          return icons[status] || 'help-circle';
+        };
+
+        // 获取状态图标背景色
+        const getStatusIconBg = (status) => {
+          const bgs = {
+            testing: 'var(--td-brand-color-light)',
+            excellent: 'var(--td-success-color-light)',
+            good: 'var(--td-brand-color-light)',
+            fair: 'var(--td-warning-color-light)',
+            poor: 'var(--td-error-color-light)'
+          };
+          return bgs[status] || 'var(--td-bg-color-secondarycontainer)';
+        };
+
+        // 获取状态图标颜色
+        const getStatusIconColor = (status) => {
+          const colors = {
+            testing: 'var(--td-brand-color)',
+            excellent: 'var(--td-success-color)',
+            good: 'var(--td-brand-color)',
+            fair: 'var(--td-warning-color)',
+            poor: 'var(--td-error-color)'
+          };
+          return colors[status] || 'var(--td-text-color-primary)';
+        };
+
+        // 获取进度条颜色
+        const getProgressColor = (quality) => {
+          const colors = {
+            excellent: 'var(--td-success-color)',
+            good: 'var(--td-brand-color)',
+            fair: 'var(--td-warning-color)',
+            poor: 'var(--td-error-color)'
+          };
+          return colors[quality] || 'var(--td-brand-color)';
+        };
+
+        // 获取指标颜色
+        const getMetricColor = (value, type) => {
+          if (type === 'latency') {
+            if (value <= 100) return 'var(--td-success-color)';
+            if (value <= 200) return 'var(--td-warning-color)';
+            return 'var(--td-error-color)';
+          }
+          if (type === 'jitter') {
+            if (value < 10) return 'var(--td-success-color)';
+            if (value < 30) return 'var(--td-warning-color)';
+            return 'var(--td-error-color)';
+          }
+          return 'var(--td-text-color-primary)';
+        };
+
+        // 执行 ping 测试
+        const pingServer = async (server) => {
+          const pingCount = 5;
+          const latencies = [];
+          let successCount = 0;
+
+          // 判断是否为智拾清澜服务器，使用特殊的健康检查接口
+          const isQinglanServer = server.id === 'qinglan';
+          const healthCheckUrl = isQinglanServer 
+            ? `http://${server.url}:8080/health?ping=${Date.now()}`
+            : `https://${server.url}/favicon.ico?ping=${Date.now()}`;
+
+          for (let i = 0; i < pingCount; i++) {
+            server.progress = ((i + 1) / pingCount) * 100;
+            
+            const startTime = performance.now();
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
+              
+              // 智拾清澜服务器使用 GET 请求访问 /health，其他使用 HEAD 请求
+              await fetch(healthCheckUrl, {
+                method: isQinglanServer ? 'GET' : 'HEAD',
+                mode: 'no-cors',
+                signal: controller.signal,
+                cache: 'no-store'
+              });
+              
+              clearTimeout(timeoutId);
+              
+              const endTime = performance.now();
+              const latency = Math.round(endTime - startTime);
+              latencies.push(latency);
+              successCount++;
+            } catch (error) {
+              const endTime = performance.now();
+              const latency = Math.round(endTime - startTime);
+              latencies.push(latency);
+            }
+
+            if (i < pingCount - 1) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          }
+
+          if (latencies.length > 0) {
+            const avgLatency = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
+            
+            const jitter = latencies.length > 1 
+              ? Math.round(latencies.reduce((sum, lat) => sum + Math.abs(lat - avgLatency), 0) / latencies.length)
+              : 0;
+            
+            const packetLoss = ((pingCount - successCount) / pingCount * 100);
+
+            const isOnline = successCount > 0;
+
+            return {
+              status: isOnline ? 'online' : 'offline',
+              latency: isOnline ? avgLatency : null,
+              jitter: isOnline ? jitter : null,
+              packetLoss: isOnline ? packetLoss : 100,
+              quality: avgLatency < 100 ? 'excellent' : avgLatency < 200 ? 'good' : 'fair'
+            };
+          }
+
+          return {
+            status: 'offline',
+            latency: null,
+            jitter: null,
+            packetLoss: 100,
+            quality: 'poor'
+          };
+        };
+
+        // 开始测试
+        const startTest = async () => {
+          if (isTesting.value) return;
+          
+          isTesting.value = true;
+          
+          servers.value.forEach(server => {
+            server.status = 'testing';
+            server.latency = null;
+            server.jitter = null;
+            server.packetLoss = null;
+            server.progress = 0;
+          });
+
+          const testPromises = servers.value.map(async (server) => {
+            const result = await pingServer(server);
+            server.status = result.status;
+            server.latency = result.latency;
+            server.jitter = result.jitter;
+            server.packetLoss = result.packetLoss;
+            server.quality = result.quality;
+            server.progress = 100;
+          });
+
+          await Promise.all(testPromises);
+
+          const now = new Date();
+          lastTestTime.value = now.toLocaleString('zh-CN');
+
+          const historyItem = {
+            time: lastTestTime.value,
+            avgLatency: averageLatency.value,
+            packetLoss: averagePacketLoss.value,
+            status: overallStatus.value,
+            statusText: overallStatusText.value
+          };
+          testHistory.value.unshift(historyItem);
+          
+          if (testHistory.value.length > 10) {
+            testHistory.value = testHistory.value.slice(0, 10);
+          }
+
+          localStorage.setItem('networkTestHistory', JSON.stringify(testHistory.value));
+
+          isTesting.value = false;
+        };
+
+        // 清除历史
+        const clearHistory = () => {
+          testHistory.value = [];
+          localStorage.removeItem('networkTestHistory');
+        };
+
+        // 加载历史记录并立即开始测试
+        onMounted(() => {
+          const saved = localStorage.getItem('networkTestHistory');
+          if (saved) {
+            try {
+              testHistory.value = JSON.parse(saved);
+            } catch (e) {
+              console.error('Failed to load history:', e);
+            }
+          }
+
+          // 页面加载后立即开始测试
+          startTest();
+        });
+
+        return {
+          isTesting,
+          lastTestTime,
+          testHistory,
+          servers,
+          tipsMessage,
+          overallStatus,
+          overallStatusText,
+          overallStatusDesc,
+          averageLatency,
+          latencyStatus,
+          latencyStatusDesc,
+          averagePacketLoss,
+          packetLossStatus,
+          packetLossStatusDesc,
+          connectedServers,
+          totalServers,
+          connectivityStatus,
+          getStatusTheme,
+          getStatusIcon,
+          getStatusIconBg,
+          getStatusIconColor,
+          getProgressColor,
+          getMetricColor,
+          startTest,
+          clearHistory
+        };
+      }
+    }).use(TDesign).mount('#app');
+  </script>
+</body>
+</html>

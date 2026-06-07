@@ -690,6 +690,46 @@
       z-index: 1;
     }
 
+    /* webview 占位符 - 懒加载 */
+    .webview-placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--td-bg-color-page);
+    }
+
+    .webview-placeholder.active {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      z-index: 1;
+    }
+
+    .placeholder-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      color: var(--td-text-color-secondary);
+    }
+
+    .placeholder-content svg {
+      opacity: 0.3;
+    }
+
+    .placeholder-content p {
+      font-size: 14px;
+      opacity: 0.6;
+    }
+
     /* 空状态 */
     .empty-state {
       display: flex;
@@ -870,6 +910,15 @@
     .sidebar {
       position: relative;
     }
+
+    /* 拖拽时的样式 */
+    .browser-tab.dragging {
+      opacity: 0.5;
+    }
+
+    .browser-tab.drag-over {
+      background: var(--td-brand-color-light);
+    }
   </style>
 </head>
 <body>
@@ -883,7 +932,7 @@
       width="360px"
     >
       <div style="text-align: center; padding: 20px;">
-        <img src="https://res.wx.qq.com/mmspraiweb_node/dist/static/img/cusqrcode.6cab1e1.jpg" alt="小程序二维码" style="width: 200px; height: 200px; border-radius: 8px;" />
+        <img src="assets/external/wechat-qrcode.jpg" alt="小程序二维码" style="width: 200px; height: 200px; border-radius: 8px;" />
         <p style="margin-top: 16px; color: #666; font-size: 14px;">微信扫码访问小程序版本</p>
       </div>
     </t-dialog>
@@ -891,7 +940,7 @@
     <!-- ===== 浏览器风格标题栏 ===== -->
     <div class="browser-title-bar">
       <div class="title-bar-brand">
-        <img src="https://www.electronjs.org/zh/assets/img/logo.svg" alt="Electron" />
+        <img src="assets/external/electron-logo.svg" alt="Electron" />
         <span>智拾清澜工作台</span>
       </div>
       <!-- 登录后显示标签页 -->
@@ -901,16 +950,19 @@
             v-for="tab in tabs"
             :key="tab.id"
             class="browser-tab"
-            :class="{ active: activeTab === tab.id, loading: tab.loading }"
+            :class="{ active: activeTab === tab.id, loading: tab.loading, dragging: draggedTab === tab.id }"
             @click="switchTab(tab.id)"
             @mouseup="handleTabMouseUp(tab.id, $event)"
+            draggable="true"
+            @dragstart="handleDragStart(tab.id, $event)"
+            @dragend="handleDragEnd"
           >
             <!-- 活跃标签指示条 -->
             <div v-if="activeTab === tab.id" class="tab-indicator"></div>
             <!-- 加载进度条 -->
             <div v-if="tab.loading" class="tab-progress"></div>
             <div class="browser-tab-icon">
-              <img v-if="tab.icon && tab.icon.startsWith('http')" :src="tab.icon" width="14" height="14" style="border-radius: 2px;" @error="tab.icon = 'globe'" />
+              <img v-if="tab.icon && (tab.icon.startsWith('http') || tab.icon.startsWith('file://'))" :src="tab.icon" width="14" height="14" style="border-radius: 2px;" @error="tab.icon = 'globe'" />
               <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <!-- home: lucide-house -->
                 <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" v-if="tab.icon === 'home'"/>
@@ -943,8 +995,16 @@
                 <path d="M10 9H8" v-if="tab.icon === 'doc'"/>
                 <path d="M16 13H8" v-if="tab.icon === 'doc'"/>
                 <path d="M16 17H8" v-if="tab.icon === 'doc'"/>
+                <!-- navigation: lucide-navigation -->
+                <polygon points="3 11 22 2 13 21 11 13 3 11" fill="currentColor" v-if="tab.icon === 'navigation'"/>
+                <!-- network: lucide-network -->
+                <rect x="16" y="16" width="6" height="6" rx="1" v-if="tab.icon === 'network'"/>
+                <rect x="2" y="16" width="6" height="6" rx="1" v-if="tab.icon === 'network'"/>
+                <rect x="9" y="2" width="6" height="6" rx="1" v-if="tab.icon === 'network'"/>
+                <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" v-if="tab.icon === 'network'"/>
+                <path d="M12 12V8" v-if="tab.icon === 'network'"/>
                 <!-- default -->
-                <circle cx="12" cy="12" r="10" v-if="!tab.icon || !['home','file','settings','message','browser','globe','user','doc'].includes(tab.icon)"></circle>
+                <circle cx="12" cy="12" r="10" v-if="!tab.icon || !['home','file','settings','message','browser','globe','user','doc','navigation','network'].includes(tab.icon)"></circle>
               </svg>
             </div>
             <span class="browser-tab-title">{{ tab.title }}</span>
@@ -1175,6 +1235,9 @@
             <div class="menu-dropdown-item" @click="openDevTools">
               <span>开发人员工具</span>
             </div>
+            <div class="menu-dropdown-item" @click="openNetworkDiagnosis">
+              <span>网络质量监测</span>
+            </div>
             <div class="menu-dropdown-divider"></div>
             <div class="menu-dropdown-item danger" @click="handleLogout">
               <span>退出账号</span>
@@ -1188,7 +1251,10 @@
         <div v-if="tabs.length === 0" class="empty-state"></div>
         <div v-else class="webview-container">
           <template v-for="tab in tabs" :key="tab.id">
+            <!-- 已访问的标签页渲染 webview -->
             <webview
+              v-if="visitedTabs.has(tab.id)"
+              :data-tab-id="tab.id"
               :src="tab.url"
               class="page-webview"
               :class="{ active: activeTab === tab.id }"
@@ -1198,6 +1264,20 @@
               javascript="yes"
               useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
             ></webview>
+            <!-- 未访问的标签页显示占位符 -->
+            <div
+              v-else
+              class="webview-placeholder"
+              :class="{ active: activeTab === tab.id }"
+            >
+              <div class="placeholder-content">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
+                </svg>
+                <p>点击标签加载页面</p>
+              </div>
+            </div>
           </template>
         </div>
       </div>

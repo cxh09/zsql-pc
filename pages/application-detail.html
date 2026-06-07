@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>预约详情 - 智拾清澜工作台</title>
-  <link rel="icon" type="image/svg+xml" href="application-detail.svg">
+  <link rel="icon" type="image/svg+xml" href="icon-doc.svg">
   <link rel="stylesheet" href="../libs/tdesign.min.css" />
   <style>
     html {
@@ -226,7 +226,6 @@
           <div style="display: flex; align-items: center; gap: 12px;">
             <span>{{ item.location }}</span>
             <t-button
-              v-if="parseCoordinates(item.location)"
               theme="primary"
               variant="outline"
               size="small"
@@ -351,7 +350,11 @@
         const openNavigation = (locationStr) => {
           const coords = parseCoordinates(locationStr);
           if (coords) {
-            const url = `real-navigation.html?lat=${coords.lat}&lng=${coords.lng}`;
+            const url = `navigation.html?lat=${coords.lat}&lng=${coords.lng}`;
+            window.open(url, '_blank');
+          } else {
+            // 如果没有坐标，尝试用地址文字导航
+            const url = `navigation.html?address=${encodeURIComponent(locationStr)}`;
             window.open(url, '_blank');
           }
         };

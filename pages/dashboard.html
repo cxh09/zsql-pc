@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>主页 - 智拾清澜工作台</title>
-  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="icon-home.svg">
   <link rel="stylesheet" href="../libs/tdesign.min.css" />
   <style>
     /* 防止页面闪烁 - 在CSS加载完成前隐藏内容 */
@@ -107,6 +107,15 @@
       border-radius: 8px;
       padding: 20px;
       border: 1px solid var(--td-border-level-1-color);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+      background: var(--td-bg-color-secondarycontainer);
+      border-color: var(--td-brand-color);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .stat-card-header {
@@ -343,7 +352,7 @@
 
     <!-- 统计卡片 -->
     <div class="stat-cards">
-      <div class="stat-card">
+      <div class="stat-card" @click="openApplications">
         <div class="stat-card-header">
           <div class="stat-card-icon blue">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -358,7 +367,7 @@
         <div class="stat-card-value">{{ stats.today }}</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card" @click="openApplications">
         <div class="stat-card-header">
           <div class="stat-card-icon orange">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -371,7 +380,7 @@
         <div class="stat-card-value">{{ stats.pending }}</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card" @click="openApplications">
         <div class="stat-card-header">
           <div class="stat-card-icon green">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -384,7 +393,7 @@
         <div class="stat-card-value">{{ stats.completed }}</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card" @click="openApplications">
         <div class="stat-card-header">
           <div class="stat-card-icon purple">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -483,6 +492,8 @@
         const openApplications = () => {
           if (window.electronAPI?.openTab) {
             window.electronAPI.openTab('预约查看', './pages/applications.html');
+          } else {
+            window.open('./applications.html', '_blank');
           }
         };
 

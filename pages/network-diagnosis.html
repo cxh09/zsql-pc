@@ -147,10 +147,6 @@
           <template #icon><t-icon name="play"></t-icon></template>
           {{ isTesting ? '测试中...' : '开始测试' }}
         </t-button>
-        <t-button theme="default" size="medium" @click="clearHistory" :disabled="testHistory.length === 0">
-          <template #icon><t-icon name="delete"></t-icon></template>
-          清除历史
-        </t-button>
       </div>
 
       <!-- 状态概览 -->
@@ -280,31 +276,6 @@
         </div>
       </t-card>
 
-      <!-- 测试历史 -->
-      <t-card v-if="testHistory.length > 0" title="测试历史" style="margin-bottom: 20px;">
-        <template #title>
-          <t-icon name="history" style="margin-right: 8px;"></t-icon>
-          测试历史
-        </template>
-        
-        <t-list :split="true">
-          <t-list-item v-for="(item, index) in testHistory" :key="index">
-            <t-row align="middle" style="width: 100%;">
-              <t-col :span="6">
-                <span style="color: var(--td-text-color-secondary);">{{ item.time }}</span>
-              </t-col>
-              <t-col :span="18">
-                <t-space>
-                  <span>平均延迟: <strong>{{ item.avgLatency }}ms</strong></span>
-                  <span>丢包率: <strong>{{ item.packetLoss }}%</strong></span>
-                  <t-tag :theme="getStatusTheme(item.status)" variant="light">{{ item.statusText }}</t-tag>
-                </t-space>
-              </t-col>
-            </t-row>
-          </t-list-item>
-        </t-list>
-      </t-card>
-
       <!-- 使用提示 -->
       <t-alert theme="info" title="使用说明" :message="tipsMessage" :close="false">
         <template #icon><t-icon name="info-circle-filled"></t-icon></template>
@@ -322,7 +293,6 @@
         // 测试状态 - 初始为 true，页面加载即开始测试
         const isTesting = ref(true);
         const lastTestTime = ref('');
-        const testHistory = ref([]);
 
         // 服务器列表
         const servers = ref([
@@ -657,41 +627,11 @@
           const now = new Date();
           lastTestTime.value = now.toLocaleString('zh-CN');
 
-          const historyItem = {
-            time: lastTestTime.value,
-            avgLatency: averageLatency.value,
-            packetLoss: averagePacketLoss.value,
-            status: overallStatus.value,
-            statusText: overallStatusText.value
-          };
-          testHistory.value.unshift(historyItem);
-          
-          if (testHistory.value.length > 10) {
-            testHistory.value = testHistory.value.slice(0, 10);
-          }
-
-          localStorage.setItem('networkTestHistory', JSON.stringify(testHistory.value));
-
           isTesting.value = false;
         };
 
-        // 清除历史
-        const clearHistory = () => {
-          testHistory.value = [];
-          localStorage.removeItem('networkTestHistory');
-        };
-
-        // 加载历史记录并立即开始测试
+        // 页面加载后立即开始测试
         onMounted(() => {
-          const saved = localStorage.getItem('networkTestHistory');
-          if (saved) {
-            try {
-              testHistory.value = JSON.parse(saved);
-            } catch (e) {
-              console.error('Failed to load history:', e);
-            }
-          }
-
           // 页面加载后立即开始测试（重置isTesting确保测试能执行）
           isTesting.value = false;
           startTest();
@@ -700,7 +640,6 @@
         return {
           isTesting,
           lastTestTime,
-          testHistory,
           servers,
           tipsMessage,
           overallStatus,
@@ -721,8 +660,7 @@
           getStatusIconColor,
           getProgressColor,
           getMetricColor,
-          startTest,
-          clearHistory
+          startTest
         };
       }
     }).use(TDesign).mount('#app');

@@ -1,6 +1,6 @@
 {
   "name": "zsql-pc",
-  "version": "1.7.0",
+  "version": "2.0.1",
   "description": "ZSQL PC - Electron Application with TDesign",
   "main": "main.js",
   "homepage": "https://github.com/zsql/zsql-pc",

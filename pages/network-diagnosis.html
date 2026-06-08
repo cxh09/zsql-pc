@@ -203,7 +203,7 @@
 
           <t-card :class="['status-card', connectivityStatus]" :bordered="true" size="small">
             <div class="status-icon-wrapper" :style="{ background: getStatusIconBg(connectivityStatus), color: getStatusIconColor(connectivityStatus) }">
-              <t-icon name="globe" size="28px"></t-icon>
+              <t-icon name="internet" size="28px"></t-icon>
             </div>
             <div class="status-label">连通性</div>
             <div class="status-value">{{ connectedServers }}/{{ totalServers }}</div>
@@ -630,7 +630,8 @@
         // 开始测试
         const startTest = async () => {
           if (isTesting.value) return;
-          
+
+          // 重置测试状态
           isTesting.value = true;
           
           servers.value.forEach(server => {
@@ -691,7 +692,8 @@
             }
           }
 
-          // 页面加载后立即开始测试
+          // 页面加载后立即开始测试（重置isTesting确保测试能执行）
+          isTesting.value = false;
           startTest();
         });
 

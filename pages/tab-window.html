@@ -231,12 +231,10 @@
       <!-- 标签信息 -->
       <div class="tab-info">
         <div class="tab-info-icon">
-          <img v-if="tabIcon && (tabIcon.startsWith('http') || tabIcon.startsWith('file://'))" :src="tabIcon" @error="tabIcon = 'globe'" />
-          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-            <path d="M2 12h20" />
-          </svg>
+          <!-- 三方页面：使用获取到的 favicon 或默认 globe 图标 -->
+          <img v-if="isExternalUrl(tabUrl)" :src="tabFavicon || '../pages/icon-globe.svg'" @error="$event.target.src = '../pages/icon-globe.svg'" />
+          <!-- 本地页面：使用本地 SVG 图标 -->
+          <img v-else :src="getLocalIconPath(tabIcon)" @error="$event.target.src = '../pages/icon-globe.svg'" />
         </div>
         <span class="tab-info-title">{{ tabTitle }}</span>
       </div>
@@ -329,8 +327,31 @@
         const tabUrl = ref(resolveUrl(rawUrl))
         const tabTitle = ref(urlParams.get('title') || '新窗口')
         const tabIcon = ref(urlParams.get('icon') || 'home')
+        const tabFavicon = ref('')  // 存储第三方网页的 favicon
         const isLoading = ref(true)
         const webview = ref(null)
+
+        // 判断是否为外部 URL（http/https 开头）
+        const isExternalUrl = (url) => {
+          return /^https?:\/\//i.test(url)
+        }
+
+        // 获取本地图标路径
+        const getLocalIconPath = (iconName) => {
+          const iconMap = {
+            'home': '../pages/icon-home.svg',
+            'file': '../pages/icon-file.svg',
+            'settings': '../pages/icon-settings.svg',
+            'message': '../pages/icon-message.svg',
+            'browser': '../pages/icon-browser.svg',
+            'user': '../pages/icon-user.svg',
+            'doc': '../pages/icon-doc.svg',
+            'navigation': '../pages/icon-navigation.svg',
+            'network': '../pages/icon-network.svg',
+            'globe': '../pages/icon-globe.svg'
+          }
+          return iconMap[iconName] || '../pages/icon-globe.svg'
+        }
 
         // 窗口状态
         const isMaximized = ref(false)
@@ -413,7 +434,10 @@
             // 页面加载完成
             webview.value.addEventListener('did-finish-load', () => {
               isLoading.value = false
-              // 获取 favicon
+              // 获取 favicon（仅第三方网页）
+              if (!isExternalUrl(tabUrl.value)) {
+                return
+              }
               try {
                 webview.value.executeJavaScript(`
                   (() => {
@@ -434,7 +458,7 @@
                   })()
                 `).then(iconUrl => {
                   if (iconUrl) {
-                    tabIcon.value = iconUrl
+                    tabFavicon.value = iconUrl
                   }
                 }).catch(() => {})
               } catch (e) {}
@@ -478,6 +502,7 @@
           tabUrl,
           tabTitle,
           tabIcon,
+          tabFavicon,
           isLoading,
           isMaximized,
           webview,
@@ -486,7 +511,9 @@
           toggleMaximize,
           closeWindow,
           mergeBackToMain,
-          refreshPage
+          refreshPage,
+          isExternalUrl,
+          getLocalIconPath
         }
       }
     }

@@ -219,6 +219,14 @@ ipcMain.handle('get-window-info', (event) => {
 // 向主窗口发送消息
 ipcMain.handle('send-to-main', (event, channel, ...args) => {
   if (mainWindow && !mainWindow.isDestroyed()) {
+    // 如果是合并标签页消息，先将主窗口带到最前面
+    if (channel === 'merge-tab-back') {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
+      }
+      mainWindow.focus()
+      mainWindow.moveTop()
+    }
     mainWindow.webContents.send(channel, ...args)
   }
 })

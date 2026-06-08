@@ -158,6 +158,28 @@ const App = {
       return url
     }
 
+    // 判断是否为外部 URL（http/https 开头）
+    const isExternalUrl = (url) => {
+      return /^https?:\/\//i.test(url)
+    }
+
+    // 获取本地图标路径
+    const getLocalIconPath = (iconName) => {
+      const iconMap = {
+        'home': './pages/icon-home.svg',
+        'file': './pages/icon-file.svg',
+        'settings': './pages/icon-settings.svg',
+        'message': './pages/icon-message.svg',
+        'browser': './pages/icon-browser.svg',
+        'user': './pages/icon-user.svg',
+        'doc': './pages/icon-doc.svg',
+        'navigation': './pages/icon-navigation.svg',
+        'network': './pages/icon-network.svg',
+        'globe': './pages/icon-globe.svg'
+      }
+      return iconMap[iconName] || './pages/icon-globe.svg'
+    }
+
     // 打开标签页
     const openTab = (title, url, icon = 'home', pageKey) => {
       // 关闭菜单
@@ -233,8 +255,8 @@ const App = {
             // 加载完成，确保关闭加载状态
             tab.loading = false
 
-            // 如果标签已经有预设的图标类型（如 'navigation'），不要覆盖
-            if (tab.icon && ['home', 'file', 'settings', 'message', 'browser', 'user', 'doc', 'navigation', 'network'].includes(tab.icon)) {
+            // 只处理外部 URL（第三方网页）
+            if (!isExternalUrl(tab.url)) {
               return
             }
 
@@ -261,7 +283,7 @@ const App = {
                 })()
               `).then(iconUrl => {
                 if (iconUrl) {
-                  tab.icon = iconUrl
+                  tab.favicon = iconUrl
                 }
               }).catch(() => {})
             } catch (e) {}
@@ -700,6 +722,8 @@ const App = {
       handleTabMouseUp,
       isTabOpen,
       refreshActiveTab,
+      isExternalUrl,
+      getLocalIconPath,
 
       // 拖拽相关
       draggedTab,

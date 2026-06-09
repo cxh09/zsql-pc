@@ -46,6 +46,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('child-window-closed', (_event, windowId) => callback(windowId))
   },
 
+  // 获取 app 根目录（用于 webview 以 file:// 加载本地 pages/*.html）
+  getAppPath: () => ipcRenderer.invoke('get-app-path'),
+
   // 监听主窗口消息
   onMainMessage: (channel, callback) => {
     ipcRenderer.on(channel, (_event, ...args) => callback(...args))

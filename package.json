@@ -1,17 +1,20 @@
 {
   "name": "zsql-pc",
-  "version": "1.9.0",
+  "version": "2.0.0",
   "description": "ZSQL PC - Electron Application with TDesign",
   "main": "main.js",
   "homepage": "https://github.com/zsql/zsql-pc",
   "scripts": {
+    "dev:vite": "vite",
+    "dev:electron": "wait-on http://localhost:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron . --dev",
+    "dev": "concurrently -k -n vite,electron -c blue,green \"npm:dev:vite\" \"npm:dev:electron\"",
     "start": "electron .",
-    "dev": "electron . --dev",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux",
-    "build:all": "electron-builder --win --linux"
+    "build:vite": "vite build",
+    "build": "npm run build:vite && electron-builder",
+    "build:win": "npm run build:vite && electron-builder --win",
+    "build:mac": "npm run build:vite && electron-builder --mac",
+    "build:linux": "npm run build:vite && electron-builder --linux",
+    "build:all": "npm run build:vite && electron-builder --win --linux"
   },
   "keywords": [
     "electron",
@@ -22,8 +25,13 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@vitejs/plugin-vue": "^6.0.7",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
     "tdesign-vue-next": "^1.20.0",
-    "vue": "^3.5.35"
+    "vite": "^8.0.16",
+    "vue": "^3.5.35",
+    "wait-on": "^9.0.10"
   },
   "devDependencies": {
     "electron": "^42.3.1",
@@ -38,12 +46,11 @@
     "files": [
       "main.js",
       "preload.js",
-      "index.html",
-      "renderer.js",
+      "dist/renderer/**/*",
       "pages/**/*",
-      "assets/**/*",
       "libs/**/*",
-      "node_modules/**/*"
+      "assets/**/*",
+      "package.json"
     ],
     "win": {
       "target": "nsis"

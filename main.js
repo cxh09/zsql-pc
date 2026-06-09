@@ -1,6 +1,10 @@
 const { app, BrowserWindow, ipcMain, session, Menu } = require('electron')
 const path = require('path')
 
+// Vite dev server URL is injected by the dev script (cross-env VITE_DEV_SERVER_URL=...).
+// In production, this env var is undefined and we fall back to the bundled renderer.
+const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
+
 let mainWindow = null
 let childWindows = new Set()
 let windowIdCounter = 0
@@ -49,8 +53,12 @@ const createBrowserWindow = (type = 'main', options = {}) => {
         icon: options.icon || 'home'
       }
     })
+  } else if (VITE_DEV_SERVER_URL) {
+    // 开发模式：加载 Vite dev server 以获得 HMR。
+    window.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    window.loadFile(path.join(__dirname, 'index.html'))
+    // 生产模式：加载 Vite 打包后的 index.html（dist/renderer/index.html）。
+    window.loadFile(path.join(__dirname, 'dist', 'renderer', 'index.html'))
   }
 
   // 不移除菜单（这样 Menu 的 accelerator 才能在 webview 获得焦点时仍然生效），
@@ -310,4 +318,9 @@ ipcMain.handle('get-child-windows', () => {
     windowId: win.windowId,
     title: win.getTitle()
   }))
+})
+
+// 返回 app 根目录（用于 webview 子页面以 file:// 加载）
+ipcMain.handle('get-app-path', () => {
+  return app.getAppPath()
 })

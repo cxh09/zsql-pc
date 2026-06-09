@@ -612,6 +612,8 @@ const App = {
       document.addEventListener('click', handleClickOutside)
       // 使用 mousedown 也能捕获到 webview 区域的点击
       document.addEventListener('mousedown', handleClickOutside)
+      // 监听 Ctrl+K 打开全局搜索
+      document.addEventListener('keydown', handleGlobalKeydown)
       initWindowInfo()
 
       // 监听子窗口合并回来的消息
@@ -623,10 +625,221 @@ const App = {
       }
     })
 
+    // ========== 全局搜索 (Ctrl+K) ==========
+    // 可搜索的页面注册表（与侧边栏菜单保持一致）
+    const availablePages = [
+      { key: 'dashboard', title: '主页', desc: '工作台主页面，查看概览数据', url: './pages/dashboard.html', icon: 'home', keywords: ['首页', '主页面', '工作台', 'home'] },
+      { key: 'applications', title: '预约查看', desc: '查看和管理所有预约申请', url: './pages/applications.html', icon: 'file', keywords: ['预约', '申请', '列表', 'application'] },
+      { key: 'customerService', title: '客户会话', desc: '微信客服聊天会话管理', url: 'https://chatbot.weixin.qq.com/@ideaaaf6b/platform/statistic/customerService', icon: 'message', keywords: ['客服', '会话', '聊天', '客户', 'message'] },
+      { key: 'browser', title: '浏览器', desc: '内置浏览器，访问任意网页', url: './pages/browser.html', icon: 'browser', keywords: ['浏览器', '网页', 'browser'] },
+      { key: 'navigation', title: '路线规划', desc: '地图与路线规划', url: './pages/navigation.html', icon: 'navigation', keywords: ['地图', '导航', '路线', '规划', 'navigation'] },
+      { key: 'account', title: '账户信息', desc: '查看和编辑个人账户信息', url: './pages/account.html', icon: 'user', keywords: ['账户', '个人', '资料', 'account', 'user'] },
+      { key: 'settings', title: '系统设置', desc: '系统偏好与全局设置', url: './pages/settings.html', icon: 'settings', keywords: ['设置', '系统设置', '偏好', 'settings'] },
+      { key: 'changelog', title: '更新日志', desc: '查看应用版本更新历史', url: './pages/changelog.html', icon: 'file', keywords: ['更新', '日志', '版本', 'changelog'] },
+      { key: 'networkDiagnosis', title: '网络质量监测', desc: '检测网络连接质量与延迟', url: './pages/network-diagnosis.html', icon: 'network', keywords: ['网络', '监测', '诊断', 'network'] }
+    ]
+
+    const searchOpen = ref(false)
+    const searchKeyword = ref('')
+    const activeSearchIndex = ref(-1)
+    const searchInputEl = ref(null)
+    const searchResultsEl = ref(null)
+
+    // 打开搜索
+    const openSearch = () => {
+      // 仅在登录后可使用
+      if (!isLoggedIn.value) return
+      searchOpen.value = true
+      searchKeyword.value = ''
+      activeSearchIndex.value = -1
+      // 多次尝试聚焦，确保从 webview 焦点或菜单快捷键触发时也能成功
+      const focusInput = () => {
+        const el = searchInputEl.value
+        if (el) {
+          el.focus({ preventScroll: true })
+          el.select?.()
+        }
+      }
+      nextTick(focusInput)
+      // 兜底：延迟一帧再试一次，处理 webview/菜单抢焦点的场景
+      requestAnimationFrame(focusInput)
+      setTimeout(focusInput, 50)
+    }
+
+    // 关闭搜索
+    const closeSearch = () => {
+      searchOpen.value = false
+      searchKeyword.value = ''
+    }
+
+    // 切换搜索状态
+    const toggleSearch = () => {
+      if (searchOpen.value) {
+        closeSearch()
+      } else {
+        openSearch()
+      }
+    }
+
+    // 可打开的功能搜索结果（仅当用户输入了关键字时才返回，避免默认展开候选列表）
+    const pageResults = computed(() => {
+      const kw = searchKeyword.value.trim().toLowerCase()
+      if (!kw) return []
+      const list = availablePages
+        .filter(p => {
+          if (p.title.toLowerCase().includes(kw)) return true
+          if (p.key.toLowerCase().includes(kw)) return true
+          if (p.desc.toLowerCase().includes(kw)) return true
+          if (p.keywords && p.keywords.some(k => k.toLowerCase().includes(kw))) return true
+          return false
+        })
+        .map(p => {
+          const opened = isTabOpen(null, p.key)
+          return {
+            key: p.key,
+            title: p.title,
+            desc: p.desc,
+            url: p.url,
+            icon: p.icon,
+            iconSrc: getLocalIconPath(p.icon),
+            opened,
+            isOpenTab: false
+          }
+        })
+      return list
+    })
+
+    // 所有结果扁平化（用于键盘导航）
+    const filteredResults = computed(() => {
+      return pageResults.value
+    })
+
+    // 计算当前 item 在扁平结果中的索引（目前只有功能区，直接返回 idx）
+    const getResultIndex = (idx, isPage = false) => {
+      return idx
+    }
+
+    // 监听搜索结果变化，自动调整 activeSearchIndex
+    watch(filteredResults, (results) => {
+      if (activeSearchIndex.value >= results.length) {
+        activeSearchIndex.value = -1
+      }
+    })
+
+    // 监听 searchKeyword，控制结果区行高度线性动画
+    watch(searchKeyword, () => {
+      nextTick(() => {
+        const row = document.querySelector('.search-results-row')
+        const inner = row ? row.querySelector('.search-results') : null
+        if (!row || !inner) return
+        if (searchKeyword.value) {
+          // 先解除 inner 自身的 max-height 限制以测量真实内容高度
+          const prev = inner.style.maxHeight
+          inner.style.maxHeight = 'none'
+          const natural = inner.scrollHeight
+          inner.style.maxHeight = prev
+          // 如果行内 maxHeight 未设置过，先设到 0 再过渡到 natural，确保有动画
+          if (!row.style.maxHeight || row.style.maxHeight === '0px') {
+            row.style.maxHeight = '0px'
+            void row.offsetHeight // 强制 reflow
+          }
+          row.style.maxHeight = natural + 'px'
+        } else {
+          // 收起：从当前高度过渡到 0
+          const current = row.offsetHeight
+          if (current > 0) {
+            row.style.maxHeight = current + 'px'
+            void row.offsetHeight
+          }
+          row.style.maxHeight = '0px'
+        }
+      })
+    })
+
+    // 监听 activeSearchIndex 变化，滚动到可视区域
+    watch(activeSearchIndex, () => {
+      nextTick(() => {
+        if (!searchResultsEl.value) return
+        const activeEl = searchResultsEl.value.querySelector('.search-item.active')
+        if (activeEl) {
+          activeEl.scrollIntoView({ block: 'nearest' })
+        }
+      })
+    })
+
+    // 选中一个搜索项
+    const selectSearchItem = (item) => {
+      if (!item) return
+      // 打开新标签（如果已存在则切换到它）
+      if (isTabOpen(null, item.key)) {
+        const existing = tabs.value.find(t => t.pageKey === item.key)
+        if (existing) switchTab(existing.id)
+      } else {
+        openTab(item.title, item.url, item.icon, item.key)
+      }
+      closeSearch()
+    }
+
+    // 搜索框键盘事件
+    const handleSearchKeydown = (e) => {
+      const results = filteredResults.value
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        closeSearch()
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (results.length > 0) {
+          // 从 -1 起步时，第一次按 ↓ 选中第一项
+          if (activeSearchIndex.value < 0) {
+            activeSearchIndex.value = 0
+          } else {
+            activeSearchIndex.value = (activeSearchIndex.value + 1) % results.length
+          }
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (results.length > 0) {
+          if (activeSearchIndex.value < 0) {
+            activeSearchIndex.value = results.length - 1
+          } else {
+            activeSearchIndex.value = (activeSearchIndex.value - 1 + results.length) % results.length
+          }
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (activeSearchIndex.value < 0) return
+        const item = results[activeSearchIndex.value]
+        if (item) {
+          selectSearchItem(item)
+        }
+      }
+    }
+
+    // 全局快捷键监听
+    const handleGlobalKeydown = (e) => {
+      // Ctrl+K 或 Cmd+K 打开搜索
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        toggleSearch()
+      }
+    }
+
+    // 监听主进程菜单触发的 toggle-search 事件（解决 webview 焦点下 Ctrl+K 无效的问题）
+    if (window.electronAPI?.onToggleSearch) {
+      window.electronAPI.onToggleSearch(() => {
+        toggleSearch()
+      })
+    }
+
     // 组件卸载时移除监听
     onUnmounted(() => {
       document.removeEventListener('click', handleClickOutside)
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleGlobalKeydown)
+      // 清理 IPC 监听
+      if (window.electronAPI?.removeAllListeners) {
+        window.electronAPI.removeAllListeners('toggle-search')
+      }
     })
 
     // 暴露方法给子页面调用
@@ -753,7 +966,22 @@ const App = {
       showQRCodeDialog,
       openMiniProgramQRCode,
       showCustomerSubmenuDelayed,
-      hideCustomerSubmenuDelayed
+      hideCustomerSubmenuDelayed,
+
+      // 全局搜索
+      searchOpen,
+      searchKeyword,
+      activeSearchIndex,
+      searchInputEl,
+      searchResultsEl,
+      pageResults,
+      filteredResults,
+      getResultIndex,
+      openSearch,
+      closeSearch,
+      toggleSearch,
+      selectSearchItem,
+      handleSearchKeydown
     }
   }
 }

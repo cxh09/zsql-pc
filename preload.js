@@ -51,6 +51,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(channel, (_event, ...args) => callback(...args))
   },
 
+  // 监听全局搜索切换事件（来自主进程菜单 accelerator）
+  onToggleSearch: (callback) => {
+    ipcRenderer.on('toggle-search', () => callback())
+  },
+
   // 移除事件监听
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel)

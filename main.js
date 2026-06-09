@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session } = require('electron')
+const { app, BrowserWindow, ipcMain, session, Menu } = require('electron')
 const path = require('path')
 
 let mainWindow = null
@@ -53,7 +53,9 @@ const createBrowserWindow = (type = 'main', options = {}) => {
     window.loadFile(path.join(__dirname, 'index.html'))
   }
 
-  window.setMenu(null)
+  // 不移除菜单（这样 Menu 的 accelerator 才能在 webview 获得焦点时仍然生效），
+  // 仅隐藏菜单栏显示。Ctrl+K 等全局快捷键通过 application menu 的 accelerator 触发。
+  window.setMenuBarVisibility(false)
 
   // 窗口关闭处理
   window.on('closed', () => {
@@ -110,7 +112,78 @@ const createWindow = () => {
   })
 }
 
+// ========== 应用菜单（含全局快捷键） ==========
+// Electron 的菜单 accelerator 即使 webview 拥有焦点也能触发，
+// 这是解决 "Ctrl+K 在 webview 焦点下不响应" 的关键。
+const buildAppMenu = () => {
+  const isMac = process.platform === 'darwin'
+  const template = [
+    // macOS 必须有应用菜单
+    ...(isMac ? [{
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }] : []),
+    {
+      label: '编辑',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+        { type: 'separator' },
+        {
+          label: '全局搜索',
+          accelerator: 'CmdOrCtrl+K',
+          click: () => {
+            // 向主窗口发送 toggle-search 事件
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('toggle-search')
+            }
+          }
+        }
+      ]
+    },
+    {
+      label: '视图',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: '窗口',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'close' }
+      ]
+    }
+  ]
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
+
 app.whenReady().then(() => {
+  buildAppMenu()
   createWindow()
 
   app.on('activate', () => {

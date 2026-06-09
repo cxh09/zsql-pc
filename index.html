@@ -919,6 +919,277 @@
     .browser-tab.drag-over {
       background: var(--td-brand-color-light);
     }
+
+    /* ========== 全局搜索 Ctrl+K 毛玻璃弹窗 ========== */
+    .search-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 12vh;
+      background: rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+
+    .search-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .search-panel {
+      width: 640px;
+      max-width: 90vw;
+      max-height: 70vh;
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateY(-12px) scale(0.98);
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .search-overlay.open .search-panel {
+      transform: translateY(0) scale(1);
+    }
+
+    /* ========== 结果区线性展开/收起动画 ========== */
+    /* 行高度由 renderer.js 通过内联 maxHeight 控制，CSS 仅负责 transition */
+    .search-results-row {
+      flex: 0 0 auto;
+      min-height: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s linear;
+    }
+
+    .search-results-row > .search-results {
+      min-height: 0;
+      overflow-y: auto;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .search-results-row.expanded > .search-results {
+      opacity: 1;
+    }
+
+    /* 深色模式适配 */
+    .tdesign-theme__dark .search-panel {
+      background: rgba(30, 30, 30, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .search-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      flex-shrink: 0;
+    }
+
+    .tdesign-theme__dark .search-input-wrap {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .search-input-icon {
+      width: 20px;
+      height: 20px;
+      color: var(--td-text-color-secondary);
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      color: var(--td-text-color-primary);
+      font-family: inherit;
+    }
+
+    .search-input::placeholder {
+      color: var(--td-text-color-secondary);
+    }
+
+    .search-shortcut-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 6px;
+      background: rgba(0, 0, 0, 0.06);
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--td-text-color-secondary);
+      font-family: monospace;
+      flex-shrink: 0;
+    }
+
+    .tdesign-theme__dark .search-shortcut-hint {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .search-results {
+      padding: 8px;
+    }
+
+    .search-results::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .search-results::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 4px;
+    }
+
+    .search-results::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .search-section-title {
+      padding: 8px 12px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--td-text-color-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .search-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      user-select: none;
+    }
+
+    .search-item:hover,
+    .search-item.active {
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .tdesign-theme__dark .search-item:hover,
+    .tdesign-theme__dark .search-item.active {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .search-item-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: var(--td-bg-color-secondarycontainer);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--td-text-color-secondary);
+    }
+
+    .search-item.active .search-item-icon {
+      background: rgba(0, 0, 0, 0.12);
+      color: var(--td-text-color-primary);
+    }
+
+    .tdesign-theme__dark .search-item.active .search-item-icon {
+      background: rgba(255, 255, 255, 0.14);
+      color: var(--td-text-color-primary);
+    }
+
+    .search-item-icon img {
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+    }
+
+    .search-item-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .search-item-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .search-item-title {
+      font-size: 14px;
+      color: var(--td-text-color-primary);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .search-item-desc {
+      font-size: 12px;
+      color: var(--td-text-color-secondary);
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .search-empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--td-text-color-secondary);
+      font-size: 13px;
+    }
+
+    .search-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      font-size: 11px;
+      color: var(--td-text-color-secondary);
+      flex-shrink: 0;
+    }
+
+    .tdesign-theme__dark .search-footer {
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .search-footer-keys {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .search-footer-keys span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .search-footer-keys kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      background: rgba(0, 0, 0, 0.06);
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 10px;
+    }
+
+    .tdesign-theme__dark .search-footer-keys kbd {
+      background: rgba(255, 255, 255, 0.1);
+    }
   </style>
 </head>
 <body>
@@ -1242,6 +1513,70 @@
         </div>
       </div>
     </div>
+
+    <!-- ===== 全局搜索 Ctrl+K 毛玻璃弹窗 ===== -->
+    <teleport to="body">
+      <div
+        class="search-overlay"
+        :class="{ open: searchOpen }"
+        @click.self="closeSearch"
+      >
+        <div class="search-panel" @click.stop>
+          <div class="search-input-wrap">
+            <svg class="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              ref="searchInputEl"
+              v-model="searchKeyword"
+              class="search-input"
+              type="text"
+              placeholder="全局搜索"
+              @keydown="handleSearchKeydown"
+            />
+            <span class="search-shortcut-hint">ESC</span>
+          </div>
+
+          <div class="search-results-row" :class="{ expanded: searchKeyword }">
+            <div class="search-results" ref="searchResultsEl">
+              <template v-if="pageResults.length > 0">
+                <div class="search-section-title">功能</div>
+                <div
+                  v-for="(item, idx) in pageResults"
+                  :key="'page-' + item.key"
+                  class="search-item"
+                  :class="{ active: activeSearchIndex === getResultIndex(idx, true) }"
+                  @click="selectSearchItem(item)"
+                  @mouseenter="activeSearchIndex = getResultIndex(idx, true)"
+                >
+                  <div class="search-item-icon">
+                    <img :src="item.iconSrc" alt="" />
+                  </div>
+                  <div class="search-item-content">
+                    <div class="search-item-title">{{ item.title }}</div>
+                    <div class="search-item-desc">{{ item.desc }}</div>
+                  </div>
+                </div>
+              </template>
+
+              <div v-else-if="searchKeyword" class="search-empty">
+                没有找到匹配 "{{ searchKeyword }}" 的功能
+              </div>
+            </div>
+          </div>
+
+          <div class="search-footer">
+            <div class="search-footer-keys">
+              <span><kbd>↑</kbd><kbd>↓</kbd> 切换</span>
+              <span><kbd>↵</kbd> 打开</span>
+              <span><kbd>ESC</kbd> 关闭</span>
+            </div>
+            <span>智拾清澜工作台</span>
+          </div>
+        </div>
+      </div>
+    </teleport>
 
   </div>
 

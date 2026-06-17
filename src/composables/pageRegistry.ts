@@ -13,6 +13,7 @@ export type IconName =
   | 'navigation'
   | 'network'
   | 'globe'
+  | 'webcam'
 
 export interface PageMeta {
   key: string
@@ -74,6 +75,14 @@ export const PAGE_REGISTRY: PageMeta[] = [
     icon: 'navigation',
     description: '地图与路线规划',
     keywords: ['地图', '导航', '路线', '规划', 'navigation']
+  },
+  {
+    key: 'videoTransmission',
+    title: '数字图传',
+    url: './pages/video-transmission.html',
+    icon: 'webcam',
+    description: '通过 WebRTC 播放 RTSP 实时视频流',
+    keywords: ['图传', '视频', '监控', 'RTSP', 'WebRTC', 'webcam']
   },
   {
     key: 'account',
@@ -138,7 +147,8 @@ const ICON_FILES: Record<IconName, string> = {
   doc: 'icon-doc.svg',
   navigation: 'icon-navigation.svg',
   network: 'icon-network.svg',
-  globe: 'icon-globe.svg'
+  globe: 'icon-globe.svg',
+  webcam: 'icon-webcam.svg'
 }
 
 /**

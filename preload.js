@@ -9,6 +9,7 @@ const PAGE_META = {
   customerService:     { title: '客户会话',     url: 'https://chatbot.weixin.qq.com/@ideaaaf6b/platform/statistic/customerService', icon: 'message' },
   browser:             { title: '浏览器',       url: './pages/browser.html',           icon: 'browser' },
   navigation:          { title: '路线规划',     url: './pages/navigation.html',        icon: 'navigation' },
+  videoTransmission:   { title: '数字图传',     url: './pages/video-transmission.html',icon: 'webcam' },
   account:             { title: '账户信息',     url: './pages/account.html',           icon: 'user' },
   settings:            { title: '系统设置',     url: './pages/settings.html',          icon: 'settings' },
   changelog:           { title: '更新日志',     url: './pages/changelog.html',         icon: 'file' },
@@ -27,7 +28,8 @@ const ICON_FILES = {
   doc: 'icon-doc.svg',
   navigation: 'icon-navigation.svg',
   network: 'icon-network.svg',
-  globe: 'icon-globe.svg'
+  globe: 'icon-globe.svg',
+  webcam: 'icon-webcam.svg'
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {

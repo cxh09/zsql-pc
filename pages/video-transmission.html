@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字图传 - 智拾清澜</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231890ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='10' r='8'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Cpath d='M7 22h10'/%3E%3Cpath d='M12 22v-4'/%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="stylesheet" href="../libs/tdesign.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--td-bg-color-page);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .page-container { max-width: 1200px; margin: 0 auto; }
+    .page-header { margin-bottom: 20px; }
+    .page-title {
+      font-size: 24px; font-weight: 600; color: var(--td-text-color-primary);
+      margin-bottom: 6px; display: flex; align-items: center; gap: 10px;
+    }
+    .page-subtitle { font-size: 14px; color: var(--td-text-color-secondary); }
+
+    .play-bar {
+      display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px;
+    }
+    .play-bar .t-input__wrap { flex: 1; }
+
+    .video-wrapper {
+      position: relative; background: #000; border-radius: 8px;
+      overflow: hidden; min-height: 480px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .video-wrapper video {
+      width: 100%; height: 100%; max-height: 720px;
+      object-fit: contain; display: block;
+    }
+    .video-placeholder { text-align: center; color: var(--td-text-color-secondary); }
+
+    .video-controls {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 10px 14px;
+      background: linear-gradient(to top, rgba(0,0,0,0.65), transparent);
+      display: flex; align-items: center; justify-content: space-between;
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    .video-wrapper:hover .video-controls { opacity: 1; }
+    .video-controls .status-text {
+      color: #fff; font-size: 13px; display: flex; align-items: center; gap: 8px;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    }
+    .status-dot.connecting { background: var(--td-warning-color); animation: pulse 1.4s infinite; }
+    .status-dot.connected  { background: var(--td-success-color); }
+    .status-dot.disconnected { background: var(--td-text-color-secondary); }
+    .status-dot.error { background: var(--td-error-color); }
+    @keyframes pulse { 0%{opacity:1} 50%{opacity:.35} 100%{opacity:1} }
+
+    .advanced-panel { margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="page-container">
+      <div class="page-header">
+        <h1 class="page-title">数字图传</h1>
+        <p class="page-subtitle">输入 RTSP 地址，点击播放即可查看实时画面</p>
+      </div>
+
+      <!-- 播放栏 -->
+      <div class="play-bar">
+        <t-input
+          v-model="rtspUrl"
+          placeholder="请输入 RTSP 地址，例如 rtsp://admin:password@192.168.1.100:554/stream1"
+          clearable
+          size="large"
+          @enter="handlePlay"
+        />
+        <t-button theme="primary" size="large" :loading="isConnecting" :disabled="!rtspUrl.trim()" @click="handlePlay">
+          <template #icon><t-icon :name="isPlaying ? 'refresh' : 'play-circle'" /></template>
+          {{ isPlaying ? '重新播放' : '播放' }}
+        </t-button>
+        <t-button theme="default" size="large" :disabled="!isPlaying" @click="handleStop">
+          <template #icon><t-icon name="stop-circle" /></template>
+          停止
+        </t-button>
+        <t-button theme="default" size="large" :disabled="!isPlaying" @click="handleFullscreen">
+          <template #icon><t-icon name="fullscreen" /></template>
+          全屏
+        </t-button>
+      </div>
+
+      <!-- 视频区 -->
+      <t-card :title="isPlaying ? '实时画面' : '视频预览'" :subtitle="statusText">
+        <div class="video-wrapper" ref="videoWrapper">
+          <video
+            v-show="isPlaying || videoLoaded"
+            id="video"
+            ref="videoEl"
+            autoplay
+            playsinline
+            muted
+          ></video>
+          <div v-if="!isPlaying && !videoLoaded" class="video-placeholder">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 10px; opacity: .45;">
+              <circle cx="12" cy="10" r="8"/><circle cx="12" cy="10" r="3"/><path d="M7 22h10"/><path d="M12 22v-4"/>
+            </svg>
+            <p>请输入 RTSP 地址并点击播放</p>
+          </div>
+          <div class="video-controls" v-show="isPlaying">
+            <div class="status-text">
+              <span class="status-dot" :class="status"></span>
+              {{ statusText }}
+            </div>
+            <div>
+              <t-button theme="primary" variant="text" shape="square" size="small" @click="handleFullscreen">
+                <t-icon name="fullscreen" />
+              </t-button>
+            </div>
+          </div>
+        </div>
+      </t-card>
+
+      <!-- 调试日志 -->
+      <t-card title="调试日志" style="margin-top: 16px;">
+        <pre style="max-height: 240px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; margin: 0;">{{ logText || '暂无日志，点击播放后这里会显示连接过程' }}</pre>
+      </t-card>
+
+      <!-- 高级设置 -->
+      <div class="advanced-panel">
+        <t-collapse :default-value="[]">
+          <t-collapse-panel header="高级设置" value="advanced">
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <t-input
+                v-model="webrtcStreamerUrl"
+                label="WebRTC-Streamer 服务地址"
+                placeholder="http://127.0.0.1:8000"
+                style="flex: 1;"
+                clearable
+              />
+              <t-button theme="default" @click="saveConfig">
+                <template #icon><t-icon name="save" /></template>
+                保存配置
+              </t-button>
+            </div>
+          </t-collapse-panel>
+        </t-collapse>
+      </div>
+    </div>
+  </div>
+
+  <script src="../libs/vue.global.js"></script>
+  <script src="../libs/tdesign.min.js"></script>
+  <script src="../libs/webrtcstreamer.js"></script>
+  <script>
+    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+
+    createApp({
+      setup() {
+        const webrtcStreamerUrl = ref('http://127.0.0.1:8000');
+        const rtspUrl = ref('');
+        const isPlaying = ref(false);
+        const isConnecting = ref(false);
+        const videoLoaded = ref(false);
+        const videoEl = ref(null);
+
+        let streamer = null;
+        const status = ref('disconnected');
+        const statusText = computed(() => {
+          const map = {
+            disconnected: '未连接',
+            connecting: '连接中...',
+            connected: '已连接',
+            error: '连接错误'
+          };
+          return map[status.value] || '未知状态';
+        });
+
+        const logs = ref([]);
+        const logText = computed(() => logs.value.join('\n'));
+
+        function log(msg) {
+          const ts = new Date().toLocaleTimeString();
+          logs.value.push(`[${ts}] ${msg}`);
+          if (logs.value.length > 100) logs.value.shift();
+          console.log(msg);
+        }
+
+        function loadConfig() {
+          try {
+            const savedStreamer = localStorage.getItem('webrtcStreamerUrl');
+            const savedRtsp = localStorage.getItem('rtspUrl');
+            if (savedStreamer) webrtcStreamerUrl.value = savedStreamer;
+            if (savedRtsp) rtspUrl.value = savedRtsp;
+          } catch (e) {
+            console.warn('读取本地配置失败', e);
+          }
+        }
+
+        function saveConfig() {
+          try {
+            localStorage.setItem('webrtcStreamerUrl', webrtcStreamerUrl.value);
+            localStorage.setItem('rtspUrl', rtspUrl.value);
+          } catch (e) {
+            console.warn('保存本地配置失败', e);
+          }
+        }
+
+        async function testConnection() {
+          const srv = webrtcStreamerUrl.value.trim();
+          log('正在测试连接: ' + srv);
+          try {
+            const resp = await fetch(srv + '/api/getIceServers');
+            if (resp.ok) {
+              log('webrtc-streamer 服务可达 ✓');
+              return true;
+            } else {
+              log('服务返回异常 HTTP 状态: ' + resp.status);
+              return false;
+            }
+          } catch (e) {
+            log('连接 webrtc-streamer 失败: ' + e.message);
+            return false;
+          }
+        }
+
+        async function handlePlay() {
+          const rtsp = rtspUrl.value.trim();
+          if (!rtsp) return;
+          handleStop();
+          saveConfig();
+          logs.value = [];
+
+          isConnecting.value = true;
+          status.value = 'connecting';
+          videoLoaded.value = false;
+          log('开始连接 RTSP: ' + rtsp);
+          log('webrtc-streamer 服务: ' + webrtcStreamerUrl.value.trim());
+
+          const srvOk = await testConnection();
+          if (!srvOk) {
+            status.value = 'error';
+            isConnecting.value = false;
+            log('请先启动 webrtc-streamer 服务！');
+            return;
+          }
+
+          try {
+            streamer = new WebRtcStreamer('video', webrtcStreamerUrl.value.trim());
+
+            // 劫持原始错误回调
+            const originalOnError = streamer.onError.bind(streamer);
+            streamer.onError = function(err) {
+              originalOnError(err);
+              log('WebRTC 错误: ' + err);
+              status.value = 'error';
+              isConnecting.value = false;
+            };
+
+            const originalCreatePeerConnection = streamer.createPeerConnection.bind(streamer);
+            streamer.createPeerConnection = function() {
+              const pc = originalCreatePeerConnection();
+              const originalHandler = pc.oniceconnectionstatechange;
+              pc.oniceconnectionstatechange = function(evt) {
+                if (originalHandler) originalHandler(evt);
+                const state = pc.iceConnectionState;
+                log('ICE 状态变化: ' + state);
+                if (state === 'connected' || state === 'completed') {
+                  status.value = 'connected';
+                  videoLoaded.value = true;
+                  isConnecting.value = false;
+                  log('视频已连接 ✓');
+                } else if (state === 'disconnected') {
+                  status.value = 'disconnected';
+                  log('连接已断开');
+                } else if (state === 'failed' || state === 'closed') {
+                  status.value = 'error';
+                  isConnecting.value = false;
+                  log('连接失败');
+                }
+              };
+              return pc;
+            };
+
+            streamer.connect(rtsp);
+            isPlaying.value = true;
+          } catch (err) {
+            log('播放异常: ' + err.message);
+            status.value = 'error';
+            isConnecting.value = false;
+          }
+        }
+
+        function handleStop() {
+          if (streamer) {
+            try { streamer.disconnect(); } catch (e) {}
+            streamer = null;
+          }
+          isPlaying.value = false;
+          isConnecting.value = false;
+          status.value = 'disconnected';
+          videoLoaded.value = false;
+          const video = document.getElementById('video');
+          if (video) video.srcObject = null;
+        }
+
+        function handleFullscreen() {
+          const el = videoEl.value || document.getElementById('video');
+          if (!el) return;
+          if (el.requestFullscreen) el.requestFullscreen();
+          else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+          else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        }
+
+        onMounted(() => { loadConfig(); });
+        onUnmounted(() => { handleStop(); });
+
+        return {
+          webrtcStreamerUrl, rtspUrl, isPlaying, isConnecting,
+          videoLoaded, videoEl, status, statusText,
+          logs, logText,
+          handlePlay, handleStop, handleFullscreen, saveConfig, testConnection
+        };
+      }
+    }).use(TDesign).mount('#app');
+  </script>
+</body>
+</html>

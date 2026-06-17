@@ -126,9 +126,11 @@
       </t-card>
 
       <!-- 调试日志 -->
-      <t-card title="调试日志" style="margin-top: 16px;">
-        <pre style="max-height: 240px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; margin: 0;">{{ logText || '暂无日志，点击播放后这里会显示连接过程' }}</pre>
-      </t-card>
+      <t-collapse :default-value="[]" style="margin-top: 16px;">
+        <t-collapse-panel header="调试日志" value="logs">
+          <pre style="max-height: 240px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; margin: 0;">{{ logText || '暂无日志，点击播放后这里会显示连接过程' }}</pre>
+        </t-collapse-panel>
+      </t-collapse>
 
       <!-- 高级设置 -->
       <div class="advanced-panel">

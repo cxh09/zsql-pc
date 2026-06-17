@@ -298,12 +298,23 @@ WebRtcStreamer.prototype.addIceCandidate = function(peerid, candidate) {
 }
 				
 /*
-* RTCPeerConnection AddTrack callback
+* RTCPeerConnection onTrack callback
 */
-WebRtcStreamer.prototype.onAddStream = function(event) {
+WebRtcStreamer.prototype.onAddTrack = function(event) {
 	console.log("Remote track added:" +  JSON.stringify(event));
 	
-	this.videoElement.srcObject = event.stream;
+	if (this.videoElement) {
+		if (!this.videoElement.srcObject) {
+			this.videoElement.srcObject = new MediaStream();
+		}
+		event.track.onended = () => console.log("Track ended: " + event.track.kind);
+		event.streams[0].getTracks().forEach(track => {
+			if (!this.videoElement.srcObject.getTracks().includes(track)) {
+				this.videoElement.srcObject.addTrack(track);
+			}
+		});
+	}
+
 	let promise = this.videoElement.play();
 	if (promise !== undefined) {
 	  promise.catch((error) => {

@@ -1,5 +1,35 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+// 同步常量,与 src/composables/pageRegistry.ts 中的 PAGE_REGISTRY 保持一致
+// (preload 在 Node 上下文加载,无法直接 require .ts 模块,故内联精简子集)
+const PAGE_META = {
+  dashboard:           { title: '主页',         url: './pages/dashboard.html',         icon: 'home' },
+  applications:        { title: '预约查看',     url: './pages/applications.html',      icon: 'file' },
+  applicationDetail:   { title: '预约详情',     url: './pages/application-detail.html',icon: 'doc' },
+  customerService:     { title: '客户会话',     url: 'https://chatbot.weixin.qq.com/@ideaaaf6b/platform/statistic/customerService', icon: 'message' },
+  browser:             { title: '浏览器',       url: './pages/browser.html',           icon: 'browser' },
+  navigation:          { title: '路线规划',     url: './pages/navigation.html',        icon: 'navigation' },
+  account:             { title: '账户信息',     url: './pages/account.html',           icon: 'user' },
+  settings:            { title: '系统设置',     url: './pages/settings.html',          icon: 'settings' },
+  changelog:           { title: '更新日志',     url: './pages/changelog.html',         icon: 'file' },
+  networkDiagnosis:    { title: '网络质量监测', url: './pages/network-diagnosis.html', icon: 'network' },
+  agreement:           { title: '用户协议',     url: './pages/agreement.html?tab=agreement', icon: 'doc' },
+  privacy:             { title: '隐私政策',     url: './pages/agreement.html?tab=privacy',   icon: 'doc' }
+}
+
+const ICON_FILES = {
+  home: 'icon-home.svg',
+  file: 'icon-file.svg',
+  settings: 'icon-settings.svg',
+  message: 'icon-message.svg',
+  browser: 'icon-browser.svg',
+  user: 'icon-user.svg',
+  doc: 'icon-doc.svg',
+  navigation: 'icon-navigation.svg',
+  network: 'icon-network.svg',
+  globe: 'icon-globe.svg'
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   // 窗口控制
   maximize: () => ipcRenderer.invoke('window-maximize'),
@@ -48,6 +78,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 获取 app 根目录（用于 webview 以 file:// 加载本地 pages/*.html）
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
+
+  // 打开新标签页(主进程转发到主窗口 useTabs.openTab)
+  openTab: (options) => ipcRenderer.invoke('open-tab-request', options),
+
+  // 同步:获取本地图标资源路径(主窗口用 /pages/,tab-window 用 ../pages/)
+  getIconPath: (name) => `/pages/${ICON_FILES[name] || ICON_FILES.globe}`,
+
+  // 同步:按 pageKey 解析页面元数据
+  resolvePage: (pageKey) => PAGE_META[pageKey] || null,
 
   // 监听主窗口消息
   onMainMessage: (channel, callback) => {

@@ -52,17 +52,17 @@ function handleLogout() {
 function openAccountInfo() {
   showUserMenu.value = false
   showMenu.value = false
-  openTab('账户信息', './pages/account.html', 'user', 'account')
+  openTab('账户信息', './pages/account.html', undefined, 'account')
 }
 function openSettings() {
   showUserMenu.value = false
   showMenu.value = false
-  openTab('系统设置', './pages/settings.html', 'settings', 'settings')
+  openTab('系统设置', './pages/settings.html', undefined, 'settings')
 }
 function openChangelog() {
   showUserMenu.value = false
   showMenu.value = false
-  openTab('更新日志', './pages/changelog.html', 'file', 'changelog')
+  openTab('更新日志', './pages/changelog.html', undefined, 'changelog')
 }
 function openDevTools() {
   showUserMenu.value = false
@@ -76,7 +76,7 @@ function openDevTools() {
 function openNetworkDiagnosis() {
   showUserMenu.value = false
   showMenu.value = false
-  openTab('网络质量监测', './pages/network-diagnosis.html', 'network', 'networkDiagnosis')
+  openTab('网络质量监测', './pages/network-diagnosis.html', undefined, 'networkDiagnosis')
 }
 
 onUnmounted(() => {
@@ -89,7 +89,7 @@ onUnmounted(() => {
     <div
       class="sidebar-item"
       :class="{ active: isTabOpen(null, 'dashboard') }"
-      @click="openTab('主页', './pages/dashboard.html', 'home', 'dashboard')"
+      @click="openTab('主页', './pages/dashboard.html', undefined, 'dashboard')"
     >
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
       <span>主页</span>
@@ -97,7 +97,7 @@ onUnmounted(() => {
     <div
       class="sidebar-item"
       :class="{ active: isTabOpen(null, 'applications') }"
-      @click="openTab('预约查看', './pages/applications.html', 'file', 'applications')"
+      @click="openTab('预约查看', './pages/applications.html', undefined, 'applications')"
     >
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6"/><path d="M4 2h10"/><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="4" y="6" width="16" height="4" rx="1"/></svg>
       <span>预约</span>
@@ -120,7 +120,7 @@ onUnmounted(() => {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g><path d="M12 22C17.5229 22 22 17.5229 22 12C22 6.47715 17.5229 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5229 6.47715 22 12 22Z" fill="transparent"/><path d="M12 22C17.5229 22 22 17.5229 22 12C22 6.47715 17.5229 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5229 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><path d="M9 12.05C7.85888 12.2816 7 13.2905 7 14.5C7 15.8807 8.11929 17 9.5 17C10.8807 17 12 15.8807 12 14.5V9.5C12 8.11929 13.1193 7 14.5 7C15.8807 7 17 8.11929 17 9.5C17 10.7095 16.1411 11.7184 15 11.95" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></g></svg>
           <span>访问小程序版本</span>
         </div>
-        <div class="submenu-item" @click="openTab('客户会话', 'https://chatbot.weixin.qq.com/@ideaaaf6b/platform/statistic/customerService', 'message', 'customerService')">
+        <div class="submenu-item" @click="openTab('客户会话', 'https://chatbot.weixin.qq.com/@ideaaaf6b/platform/statistic/customerService', undefined, 'customerService')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g><ellipse cx="12.0013" cy="12.0007" rx="4.00125" ry="4.00075" fill="transparent"/><path d="M22.0034 12.002C22.0034 17.5248 17.5263 22.002 12.0034 22.002C6.48057 22.002 2.00342 17.5248 2.00342 12.002C2.00342 6.4791 6.48057 2.00195 12.0034 2.00195C17.5263 2.00195 22.0034 6.4791 22.0034 12.002Z" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></g></svg>
           <span>使用网页版</span>
         </div>

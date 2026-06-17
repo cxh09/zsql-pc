@@ -324,3 +324,11 @@ ipcMain.handle('get-child-windows', () => {
 ipcMain.handle('get-app-path', () => {
   return app.getAppPath()
 })
+
+// webview 页面发起 openTab 请求，转发到主窗口由 useTabs 实际打开
+ipcMain.handle('open-tab-request', (_event, options) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('open-tab-from-main', options || {})
+  }
+  return null
+})

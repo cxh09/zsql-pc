@@ -337,20 +337,12 @@
         }
 
         // 获取本地图标路径
+        // tab-window 位于 pages/ 下,需把 preload 返回的 /pages/ 前缀替换为 ../pages/
         const getLocalIconPath = (iconName) => {
-          const iconMap = {
-            'home': '../pages/icon-home.svg',
-            'file': '../pages/icon-file.svg',
-            'settings': '../pages/icon-settings.svg',
-            'message': '../pages/icon-message.svg',
-            'browser': '../pages/icon-browser.svg',
-            'user': '../pages/icon-user.svg',
-            'doc': '../pages/icon-doc.svg',
-            'navigation': '../pages/icon-navigation.svg',
-            'network': '../pages/icon-network.svg',
-            'globe': '../pages/icon-globe.svg'
-          }
-          return iconMap[iconName] || '../pages/icon-globe.svg'
+          const abs = window.electronAPI?.getIconPath
+            ? window.electronAPI.getIconPath(iconName)
+            : `../pages/icon-${iconName}.svg`
+          return abs.replace('/pages/', '../pages/')
         }
 
         // 窗口状态

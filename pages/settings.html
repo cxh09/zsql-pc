@@ -351,9 +351,9 @@
         // 打开账户信息页面
         const openAccountInfo = () => {
           if (window.electronAPI?.openTab) {
-            window.electronAPI.openTab('账户信息', './pages/account.html', 'user', 'account');
+            window.electronAPI.openTab({ pageKey: 'account' })
           } else {
-            window.open('./account.html', '_blank');
+            window.open('./account.html', '_blank')
           }
         };
 
@@ -376,11 +376,8 @@
         // 打开链接
         const openLink = (type) => {
           if (window.electronAPI?.openTab) {
-            const titles = {
-              agreement: '用户协议',
-              privacy: '隐私政策'
-            };
-            window.electronAPI.openTab(titles[type], `./agreement.html?tab=${type}`, 'document', type);
+            const pageKey = type === 'privacy' ? 'privacy' : 'agreement'
+            window.electronAPI.openTab({ pageKey })
           } else {
             window.open(`./agreement.html?tab=${type}`, '_blank');
           }

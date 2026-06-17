@@ -485,21 +485,25 @@
 
         const viewAll = () => {
           if (window.electronAPI?.openTab) {
-            window.electronAPI.openTab('预约查看', './pages/applications.html');
+            window.electronAPI.openTab({ pageKey: 'applications' })
+          } else {
+            window.open('./applications.html', '_blank')
           }
         };
 
         const openApplications = () => {
           if (window.electronAPI?.openTab) {
-            window.electronAPI.openTab('预约查看', './pages/applications.html');
+            window.electronAPI.openTab({ pageKey: 'applications' })
           } else {
-            window.open('./applications.html', '_blank');
+            window.open('./applications.html', '_blank')
           }
         };
 
         const openSettings = () => {
           if (window.electronAPI?.openTab) {
-            window.electronAPI.openTab('系统设置', './pages/settings.html');
+            window.electronAPI.openTab({ pageKey: 'settings' })
+          } else {
+            window.open('./settings.html', '_blank')
           }
         };
 

@@ -55,7 +55,7 @@ function handleLogin() {
     isLoggedIn.value = true
     saveCredentials()
     MessagePlugin.success('登录成功！')
-    openTab('主页', './pages/dashboard.html', 'home', 'dashboard')
+    openTab('主页', './pages/dashboard.html', undefined, 'dashboard')
   }, 1500)
 }
 

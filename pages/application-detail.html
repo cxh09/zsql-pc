@@ -349,12 +349,16 @@
         // 打开导航页面
         const openNavigation = (locationStr) => {
           const coords = parseCoordinates(locationStr);
+          let url;
           if (coords) {
-            const url = `navigation.html?lat=${coords.lat}&lng=${coords.lng}`;
-            window.open(url, '_blank');
+            url = `navigation.html?lat=${coords.lat}&lng=${coords.lng}`;
           } else {
             // 如果没有坐标，尝试用地址文字导航
-            const url = `navigation.html?address=${encodeURIComponent(locationStr)}`;
+            url = `navigation.html?address=${encodeURIComponent(locationStr)}`;
+          }
+          if (window.electronAPI?.openTab) {
+            window.electronAPI.openTab({ url });
+          } else {
             window.open(url, '_blank');
           }
         };

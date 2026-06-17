@@ -1,12 +1,13 @@
 import { ref, nextTick, watch } from 'vue'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { getElectronAPI } from './useElectron'
+import { getIconPath, resolveByKey, resolveByUrl, IconName } from './pageRegistry'
 
 export interface Tab {
   id: string
   title: string
   url: string
-  icon: string
+  icon: IconName
   pageKey?: string
   favicon?: string
   loading?: boolean
@@ -25,24 +26,10 @@ const visitedTabs = ref<Set<string>>(new Set())
 const draggedTab = ref<string | null>(null)
 let dragStartTime = 0
 
-// Icons are served from the Vite public directory (`public/pages/icon-*.svg`).
-// Using absolute paths keeps the URLs simple and works both in dev (Vite dev
-// server) and production (built assets in dist/renderer/).
-const ICON_MAP: Record<string, string> = {
-  home: '/pages/icon-home.svg',
-  file: '/pages/icon-file.svg',
-  settings: '/pages/icon-settings.svg',
-  message: '/pages/icon-message.svg',
-  browser: '/pages/icon-browser.svg',
-  user: '/pages/icon-user.svg',
-  doc: '/pages/icon-doc.svg',
-  navigation: '/pages/icon-navigation.svg',
-  network: '/pages/icon-network.svg',
-  globe: '/pages/icon-globe.svg'
-}
-
+// Icons are resolved via pageRegistry.getIconPath(); the registry is the
+// single source of truth for icon names and their asset paths.
 export function getLocalIconPath(iconName: string): string {
-  return ICON_MAP[iconName] || ICON_MAP.globe
+  return getIconPath(iconName as IconName, '/pages/')
 }
 
 export function isExternalUrl(url: string): boolean {
@@ -214,13 +201,14 @@ function cleanupAllWebviews() {
  * Top-level imperative API. Other composables (e.g. useSearch) and event
  * listeners call these directly without going through useTabs().
  */
-export function openTab(title: string, url: string, icon = 'home', pageKey?: string): string {
+export function openTab(title: string, url: string, icon?: IconName, pageKey?: string): string {
   const resolvedUrl = resolveUrl(url)
+  const resolvedIcon: IconName = (icon ?? (pageKey ? resolveByKey(pageKey)?.icon : undefined)) ?? 'globe'
   const newTab: Tab = {
     id: genId(),
     title,
     url: resolvedUrl,
-    icon,
+    icon: resolvedIcon,
     ...(pageKey ? { pageKey } : {})
   }
   tabs.value.push(newTab)
@@ -362,27 +350,46 @@ export function useTabs() {
     wired = true
     const api = getElectronAPI()
     api?.onOpenNewTab?.((url: string) => {
-      let title = '浏览器'
-      let icon = 'home'
-      try {
-        const u = new URL(url)
-        title = u.hostname
-      } catch {
-        /* default */
+      const meta = resolveByUrl(url)
+      if (meta) {
+        openTab(meta.title, url, meta.icon, meta.key)
+      } else {
+        // 未在 registry 中识别的外部 URL,使用 hostname 作为 title,globe 作为 icon
+        let title = '浏览器'
+        try {
+          title = new URL(url).hostname
+        } catch {
+          /* default */
+        }
+        openTab(title, url, 'globe')
       }
-      const lower = url.toLowerCase()
-      if (lower.includes('application-detail') || lower.includes('agreement')) icon = 'doc'
-      else if (lower.includes('navigation')) {
-        icon = 'navigation'
-        title = '路线规划'
-      }
-      openTab(title, url, icon)
     })
 
     api?.onMainMessage?.('merge-tab-back', (tabData: unknown) => {
       const t = tabData as { title: string; url: string; icon: string }
-      openTab(t.title, t.url, t.icon)
+      openTab(t.title, t.url, t.icon as IconName)
       MessagePlugin.success('标签页已合并')
+    })
+
+    api?.onMainMessage?.('open-tab-from-main', (options: unknown) => {
+      const opts = (options ?? {}) as {
+        pageKey?: string
+        title?: string
+        url?: string
+        icon?: IconName
+      }
+      // 优先使用 pageKey 在 registry 中推导完整元数据
+      if (opts.pageKey) {
+        const meta = resolveByKey(opts.pageKey)
+        if (meta) {
+          openTab(opts.title ?? meta.title, opts.url ?? meta.url, opts.icon ?? meta.icon, meta.key)
+          return
+        }
+      }
+      // 退化路径:按调用方传入的 url/title/icon 打开
+      if (opts.url) {
+        openTab(opts.title ?? '新标签页', opts.url, opts.icon)
+      }
     })
   }
 

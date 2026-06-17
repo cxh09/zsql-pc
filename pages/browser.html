@@ -466,15 +466,15 @@
         // 打开URL
         const openUrl = (url) => {
           if (window.electronAPI?.openTab) {
-            // 在Electron环境中打开新标签页
+            // 外部 URL:用 pageKey='browser' 推导 icon(globe 在 registry 中? 不, browser 在 registry)
+            // 实际做法:不传 pageKey,只传 title/url,由主进程走 resolveByUrl 命中 browser pageKey
+            // 或者明确传 pageKey='browser' 让 icon 是 browser 图标(原来是 globe,这是行为变化)
+            // 推荐:传 pageKey='browser' 与 URL 一致(用户从浏览器页打开外链,标签 icon 应为 browser)
             let title = '浏览器';
             try {
-              const urlObj = new URL(url);
-              title = urlObj.hostname;
-            } catch (e) {
-              // 使用默认标题
-            }
-            window.electronAPI.openTab(title, url, 'globe');
+              title = new URL(url).hostname;
+            } catch (e) { /* default */ }
+            window.electronAPI.openTab({ pageKey: 'browser', url, title });
           } else {
             // 在浏览器中直接打开
             window.open(url, '_blank');

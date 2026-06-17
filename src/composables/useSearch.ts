@@ -106,13 +106,15 @@ export function useSearch() {
     }
   }
 
-  // Linear expand/collapse animation for the results row.
+  // Expand/collapse animation for the results row with ease-in-out curve.
   watch(searchKeyword, () => {
     nextTick(() => {
       const row = document.querySelector('.search-results-row') as HTMLElement | null
       const inner = row?.querySelector('.search-results') as HTMLElement | null
       if (!row || !inner) return
       if (searchKeyword.value) {
+        // Opening: clear inline opacity so CSS class controls it, then expand max-height
+        inner.style.opacity = ''
         const prev = inner.style.maxHeight
         inner.style.maxHeight = 'none'
         const natural = inner.scrollHeight
@@ -123,12 +125,16 @@ export function useSearch() {
         }
         row.style.maxHeight = natural + 'px'
       } else {
-        const current = row.offsetHeight
-        if (current > 0) {
-          row.style.maxHeight = current + 'px'
-          void row.offsetHeight
-        }
-        row.style.maxHeight = '0px'
+        // Closing: fade out inner first, then collapse height
+        inner.style.opacity = '0'
+        setTimeout(() => {
+          const current = row.offsetHeight
+          if (current > 0) {
+            row.style.maxHeight = current + 'px'
+            void row.offsetHeight
+            row.style.maxHeight = '0px'
+          }
+        }, 50)
       }
     })
   })

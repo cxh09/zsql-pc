@@ -100,6 +100,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('toggle-search', () => callback())
   },
 
+  // 通知主进程:全局搜索浮层是否打开(用于 ESC 关闭逻辑)
+  setSearchState: (isOpen) => ipcRenderer.send('set-search-state', !!isOpen),
+
   // 移除事件监听
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel)

@@ -19,7 +19,7 @@
 import { writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { deflateRawSync } from 'node:zlib'
+import { deflateSync } from 'node:zlib'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -127,7 +127,7 @@ function encodePNG(width, height, rgba) {
     filtered[y * (1 + width * 4)] = 0
     rgba.copy(filtered, y * (1 + width * 4) + 1, y * width * 4, (y + 1) * width * 4)
   }
-  const idat = deflateRawSync(filtered)
+  const idat = deflateSync(filtered)
 
   return Buffer.concat([
     sig,

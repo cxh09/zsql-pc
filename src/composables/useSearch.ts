@@ -1,6 +1,7 @@
 import { ref, computed, nextTick, watch } from 'vue'
 import { getLocalIconPath, isTabOpen, openTab as tabsOpenTab, switchTab as tabsSwitchTab } from './useTabs'
 import { PAGE_REGISTRY, type PageMeta, type IconName, getIconPath } from './pageRegistry'
+import { getElectronAPI } from './useElectron'
 
 export interface SearchPageItem {
   key: string
@@ -24,6 +25,13 @@ const searchOpen = ref(false)
 const searchKeyword = ref('')
 const activeSearchIndex = ref(-1)
 const searchInputEl = ref<HTMLInputElement | null>(null)
+
+// 通知主进程搜索浮层的开/关,让主进程在搜索打开时不响应 ESC 关闭
+if (typeof window !== 'undefined') {
+  watch(searchOpen, (isOpen) => {
+    getElectronAPI()?.setSearchState?.(isOpen)
+  })
+}
 
 const pageResults = computed(() => {
   const kw = searchKeyword.value.trim().toLowerCase()

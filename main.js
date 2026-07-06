@@ -10,6 +10,8 @@ let mainWindow = null
 let childWindows = new Set()
 let windowIdCounter = 0
 let webrtcStreamerProcess = null
+// 主窗口"全局搜索"浮层是否打开;true 时不响应 ESC 关闭,让渲染层先关搜索
+let searchOpenInMain = false
 
 // 启动 webrtc-streamer 子进程
 function startWebRTCStreamer() {
@@ -51,6 +53,7 @@ const createBrowserWindow = (type = 'main', options = {}) => {
   const windowId = ++windowIdCounter
   const isMainWindow = type === 'main'
 
+  // 不显式设置 icon,沿用 Electron 自带图标
   const window = new BrowserWindow({
     width: options.width || 1200,
     height: options.height || 700,
@@ -99,10 +102,29 @@ const createBrowserWindow = (type = 'main', options = {}) => {
   // 仅隐藏菜单栏显示。Ctrl+K 等全局快捷键通过 application menu 的 accelerator 触发。
   window.setMenuBarVisibility(false)
 
+  // 按 ESC 关闭窗口。
+  // - 在主窗口 webContents 上,过滤掉搜索浮层打开的情况,让渲染层先关搜索。
+  // - 子窗口(tab-window)直接关闭。
+  // - 必须用 before-input-event 而不是 window keydown,因为 webview 内部的 keydown
+  //   不会冒泡到父 window。webview 自身的 ESC 拦截放到下面的 web-contents-created
+  //   统一处理。
+  window.webContents.on('before-input-event', (event, input) => {
+    if (
+      input.type === 'keyDown' &&
+      input.key === 'Escape' &&
+      !input.alt && !input.control && !input.meta && !input.shift
+    ) {
+      if (isMainWindow && searchOpenInMain) return
+      if (!window.isDestroyed()) window.close()
+    }
+  })
+
   // 窗口关闭处理
   window.on('closed', () => {
     if (isMainWindow) {
       mainWindow = null
+      // 主窗口关闭时,清掉 ESC 拦截的搜索标志,避免下一次打开主窗口时残留状态
+      searchOpenInMain = false
       // 主窗口关闭时，关闭所有子窗口
       childWindows.forEach(child => {
         if (!child.isDestroyed()) {
@@ -248,6 +270,24 @@ app.on('web-contents-created', (event, contents) => {
       }
       return { action: 'deny' }
     })
+
+    // webview 内部按 ESC 关闭宿主窗口。
+    // webview 内的 keydown 不会冒泡到父 window,所以需要在 webview 自己的 webContents 上拦截。
+    contents.on('before-input-event', (event, input) => {
+      if (
+        input.type === 'keyDown' &&
+        input.key === 'Escape' &&
+        !input.alt && !input.control && !input.meta && !input.shift
+      ) {
+        const host = contents.hostWebContents
+        if (!host) return
+        const hostWindow = BrowserWindow.fromWebContents(host)
+        if (!hostWindow || hostWindow.isDestroyed()) return
+        // 主窗口且搜索浮层打开时,留给渲染层先关搜索
+        if (hostWindow === mainWindow && searchOpenInMain) return
+        hostWindow.close()
+      }
+    })
   }
 })
 
@@ -300,6 +340,11 @@ ipcMain.handle('open-devtools', (event) => {
   if (win) {
     win.webContents.openDevTools()
   }
+})
+
+// 渲染层通知主进程"全局搜索"浮层是否打开,供 ESC 关闭逻辑判断
+ipcMain.on('set-search-state', (_event, isOpen) => {
+  searchOpenInMain = !!isOpen
 })
 
 // ========== 多窗口相关 IPC ==========

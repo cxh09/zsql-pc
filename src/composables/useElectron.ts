@@ -20,6 +20,7 @@ export interface ElectronAPI {
   onChildWindowClosed: (cb: (windowId: number) => void) => void
   onMainMessage: (channel: string, cb: (...args: unknown[]) => void) => void
   onToggleSearch: (cb: () => void) => void
+  setSearchState: (isOpen: boolean) => void
   removeAllListeners: (channel: string) => void
 
   // Auth

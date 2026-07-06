@@ -28,8 +28,13 @@ let dragStartTime = 0
 
 // Icons are resolved via pageRegistry.getIconPath(); the registry is the
 // single source of truth for icon names and their asset paths.
-export function getLocalIconPath(iconName: string): string {
-  return getIconPath(iconName as IconName, '/pages/')
+//
+// `basePath` controls the URL prefix:
+//   - './pages/'   (default) — 主窗口上下文;Vite dev/prod 都能解析(Vite 构建时
+//     由 copy-pages-icons 插件把 pages/icon-*.svg 拷贝到 dist/renderer/pages/)
+//   - '../pages/'  — tab-window 子窗口上下文,html 与 svg 同目录,使用相对路径
+export function getLocalIconPath(iconName: string, basePath: string = './pages/'): string {
+  return getIconPath(iconName as IconName, basePath)
 }
 
 export function isExternalUrl(url: string): boolean {

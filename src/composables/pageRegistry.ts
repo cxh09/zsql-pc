@@ -169,10 +169,11 @@ function normalizeUrlPath(url: string): string {
 
 /**
  * 根据 icon 名返回 SVG 资源路径。
- * 主窗口上下文默认 basePath='/pages/',tab-window.html 中应传 '../pages/'。
- * 未知 icon 名回退为 globe 图标。
+ * 主窗口上下文默认 basePath='./pages/' (相对路径,适用于 Vite dev server 站点根
+ * 与 Electron loadFile 的 file:// 协议两种场景)。tab-window.html 内部自行
+ * 替换为 '../pages/'。未知 icon 名回退为 globe 图标。
  */
-export function getIconPath(name: IconName, basePath: string = '/pages/'): string {
+export function getIconPath(name: IconName, basePath: string = './pages/'): string {
   const fileName = ICON_FILES[name]
   if (!fileName) {
     return getIconPath('globe', basePath)

@@ -1,3 +1,16 @@
+## v2.4.0 (2026-07-08)
+迁移:控制台(/spec 页面)从自写 HTML/CSS 整体迁移至 TDesign 组件库,UI 视觉与工作台统一
+新增:控制台标题栏与工作台对齐,模式切换使用 TDesign 填充型按钮组(t-radio-group + variant="default-filled")
+新增:连接面板 IP/端口展示更显眼,新增"Ping 测试"按钮(主进程一次性 TCP socket 测握手延迟,1.5s 超时)
+新增:工作台/控制台互切"关旧开新、原位出现、同时只有一个",2 秒 TDesign 全屏 loading 过渡(毛玻璃 1s 淡入 + 居中 spinner)
+修复:Electron 标题栏 drag 区吞掉模式按钮点击事件(新增 .title-bar-interactive 显式标记 -webkit-app-region: no-drag)
+修复:工作台 close 时 childWindows 级联遍历误关新控制台窗口(从 childWindows 摘除"切换目标"窗口)
+修复:TDesign ESM t-loading 不设默认 z-index 导致工作台毛玻璃盖住 spinner(显式 :z-index="9999",覆盖 ESM/UMD 差异)
+调整:控制台命令按钮改用 emoji(⛔ → 🚫),删除"深度睡眠"按钮及其 cmdShutdown 实现
+清理:移除未使用的 serialport 死依赖(electron-rebuild 需 MSVC,Windows 无 VS 致打包失败)
+
+---
+
 ## v2.3.0 (2026-07-06)
 修复:`npm start` / 生产环境下主窗口 BrowserTab 与全局搜索结果中的页面图标 404 不显示
 修复:占位原生图标 PNG 数据损坏(zlib 头缺失),窗口与任务栏显示为黑方块

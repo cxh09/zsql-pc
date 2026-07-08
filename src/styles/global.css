@@ -120,6 +120,33 @@ body {
   flex-shrink: 0;
 }
 .title-bar-brand img { width: 24px; height: 24px; }
+.title-mode-toggle {
+  -webkit-app-region: no-drag;
+  appearance: none;
+  background: var(--td-bg-color-secondarycontainer);
+  border: 1px solid var(--td-border-level-1-color);
+  color: var(--td-text-color-primary);
+  font-size: 13px;
+  font-weight: 550;
+  padding: 2px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  line-height: 1.4;
+}
+.title-mode-toggle:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border-color: #3b82f6;
+}
+.title-mode-toggle:active {
+  transform: scale(0.96);
+}
+
+/* 标题栏内可交互区域: Electron 标题栏是 drag 区,内部按钮/单选框需显式标记为 no-drag 才能点击 */
+.title-bar-interactive {
+  -webkit-app-region: no-drag;
+}
 
 .browser-tabs {
   display: flex; align-items: center; gap: 2px;

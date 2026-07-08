@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>控制台 - ESP32-S3 上位机</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="../libs/tdesign.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--td-bg-color-page, #f5f7fa);
+      color: var(--td-text-color-primary, #181818);
+    }
+    #app { width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+
+    /* 标题栏: 照搬工作台 TitleBar.vue + global.css(白色 + 品牌 + 模式按钮 + 标准窗口控件) */
+    .browser-title-bar {
+      height: 50px; flex-shrink: 0;
+      background: var(--td-bg-color-container);
+      border-bottom: 1px solid var(--td-border-level-1-color);
+      display: flex; align-items: center;
+      z-index: 1000;
+      user-select: none; -webkit-app-region: drag;
+    }
+    .title-bar-brand {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 16px;
+      font-size: 15px; font-weight: 550;
+      color: var(--td-text-color-primary);
+      flex-shrink: 0;
+    }
+    .title-bar-brand img { width: 24px; height: 24px; }
+    .title-mode-toggle {
+      -webkit-app-region: no-drag;
+      appearance: none;
+      background: var(--td-bg-color-secondarycontainer);
+      border: 1px solid var(--td-border-level-1-color);
+      color: var(--td-text-color-primary);
+      font-size: 13px; font-weight: 550;
+      padding: 2px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+      line-height: 1.4;
+    }
+    .title-mode-toggle:hover {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      border-color: #3b82f6;
+    }
+    .title-mode-toggle:active { transform: scale(0.96); }
+    /* 标题栏内可交互区域: Electron 标题栏是 drag 区,内部按钮/单选框需显式标记为 no-drag 才能点击 */
+    .title-bar-interactive { -webkit-app-region: no-drag; }
+    /* 切换工作台/控制台时的毛玻璃背景: 1s 淡入(TDesign 自带 backdrop 不会重新触发动画,用 Vue transition 强制每次都跑) */
+    .switch-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;       /* 在页面内容之上(< TDesign Lm=6000),让 t-loading 的 spinner 永远在最上面 */
+      pointer-events: none;
+      background-color: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(16px);
+    }
+    .switch-fade-enter-active {
+      transition:
+        background-color 1s ease,
+        backdrop-filter 1s ease;
+    }
+    .switch-fade-enter-from {
+      background-color: rgba(255, 255, 255, 0);
+      backdrop-filter: blur(0);
+    }
+    .title-bar-spacer { flex: 1; }
+    .title-bar-window-controls {
+      display: flex; align-items: center; height: 100%;
+      -webkit-app-region: no-drag;
+    }
+    .window-btn {
+      width: 46px; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s;
+      color: var(--td-text-color-primary);
+    }
+    .window-btn:hover { background: var(--td-bg-color-secondarycontainer); }
+    .window-btn.close:hover { background: #e81123; color: white; }
+    .window-btn svg { width: 10px; height: 10px; }
+
+    /* 主区三栏布局 */
+    .main { flex: 1; display: grid; grid-template-columns: 360px 1fr 360px; grid-template-rows: auto 1fr auto;
+      grid-template-areas: "conn conn conn" "left center right" "stats stats stats";
+      gap: 12px; padding: 12px; overflow: hidden; }
+    .area-conn  { grid-area: conn; }
+    .area-left  { grid-area: left; }
+    .area-center{ grid-area: center; }
+    .area-right { grid-area: right; }
+    .area-stats { grid-area: stats; }
+
+    /* 中央: 姿态 SVG (TDesign 不可覆盖, 保留自写) */
+    .attitude-wrap { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; min-height: 0; }
+    .attitude-svg  { width: 240px; height: 240px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.08)); }
+    .attitude-text { font-family: ui-monospace, monospace; font-size: 14px; color: var(--td-text-color-secondary, #666); text-align: center; }
+    .attitude-text b { color: #3b82f6; font-size: 18px; }
+
+    /* 急停按钮闪烁高亮 */
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+    .t-button.is-danger.blink { animation: blink 0.4s linear infinite; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 标题栏 (照搬工作台 TitleBar.vue) -->
+      <div class="browser-title-bar">
+        <div class="title-bar-brand">
+          <img src="../assets/external/electron-logo.svg" alt="智拾清澜" />
+          <span>智拾清澜</span>
+          <!-- TDesign 填充型按钮单选框:当前模式"控制台"为选中态,点"工作台"则关闭本窗口 -->
+          <t-radio-group
+            class="title-bar-interactive"
+            variant="default-filled"
+            size="small"
+            :value="modeText"
+            @change="onModeChange"
+            title="当前: 控制台, 点击切换"
+          >
+            <t-radio-button class="title-bar-interactive" value="工作台">工作台</t-radio-button>
+            <t-radio-button class="title-bar-interactive" value="控制台">控制台</t-radio-button>
+          </t-radio-group>
+        </div>
+      <div class="title-bar-spacer"></div>
+      <div class="title-bar-window-controls">
+        <div class="window-btn minimize" @click="minWindow" title="最小化">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </div>
+        <div class="window-btn maximize" @click="maxWindow" title="最大化">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          </svg>
+        </div>
+        <div class="window-btn close" @click="closeWindow" title="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主区 -->
+    <div class="main">
+      <!-- 连接 -->
+      <t-card class="area-conn" :bordered="true" size="small">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <!-- 目标地址(IP + 端口) -->
+          <span style="font-size:12px; color:var(--td-text-color-secondary,#666); white-space:nowrap;">目标地址</span>
+          <t-input v-model="host" placeholder="主控 IP" size="small" style="width:170px;"
+                   :disabled="connState==='connected' || connState==='connecting'" />
+          <span style="font-size:14px; color:var(--td-text-color-secondary,#999);">:</span>
+          <t-input-number v-model="port" :min="1" :max="65535" size="small" style="width:120px;"
+                          :disabled="connState==='connected' || connState==='connecting'" />
+          <!-- 当前目标快照(只读, 当用户编辑时也方便一眼看到) -->
+          <t-tag variant="outline" size="small" style="font-family:ui-monospace,monospace;">
+            {{ host }}:{{ port }}
+          </t-tag>
+
+          <!-- Ping 测试 -->
+          <t-button size="small" theme="default" variant="outline"
+                    :loading="pingState==='pinging'" :disabled="pingState==='pinging'"
+                    @click="doPing">
+            🩺 Ping 测试
+          </t-button>
+          <t-tag v-if="pingState==='ok'" theme="success" variant="light" size="small">
+            Pong {{ pingMs }} ms
+          </t-tag>
+          <t-tag v-else-if="pingState==='fail'" theme="danger" variant="light" size="small"
+                 :title="pingError">
+            ✕ {{ pingError }}
+          </t-tag>
+          <t-tag v-else-if="pingState==='idle' && pingLastMs!=null" variant="light" size="small">
+            上次 {{ pingLastMs }} ms
+          </t-tag>
+
+          <span style="flex:1"></span>
+
+          <!-- 连接状态 + 连接按钮 -->
+          <t-tag :theme="connTagTheme" variant="light">{{ connLabel }}</t-tag>
+          <t-button v-if="connState!=='connected'" theme="primary" size="small" :loading="connState==='connecting'" @click="doConnect">连接</t-button>
+          <t-button v-else theme="danger" variant="outline" size="small" @click="doDisconnect">断开</t-button>
+
+          <!-- 自动发送 -->
+          <span style="width:1px; height:20px; background:var(--td-border-level-1-color);"></span>
+          <t-switch v-model="autoSend" size="small" />
+          <span style="font-size:12px; color:var(--td-text-color-secondary,#666);">持续发送</span>
+          <t-tag variant="light" size="small">{{ autoSend ? '20Hz' : '点发' }}</t-tag>
+        </div>
+      </t-card>
+
+      <!-- 左: 控制指令 -->
+      <t-card class="area-left" title="控制指令" size="small" :bordered="true">
+        <template #actions>
+          <t-tag variant="light" size="small">speed + yaw</t-tag>
+        </template>
+
+        <div style="margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:12px;">
+            <span>推进速度 speed</span>
+            <span class="imu-val" style="color:#3b82f6; font-size:14px;">{{ speed > 0 ? '+' : '' }}{{ speed }}</span>
+          </div>
+          <t-slider v-model="speed" :min="-100" :max="100" :step="1" :show-input="true" @change="onSliderChange" />
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:12px;">
+            <span>偏航 yaw</span>
+            <span style="font-family:ui-monospace,monospace; font-weight:600; color:#3b82f6; font-size:14px;">{{ yaw > 0 ? '+' : '' }}{{ yaw }}</span>
+          </div>
+          <t-slider v-model="yaw" :min="-100" :max="100" :step="1" :show-input="true" @change="onSliderChange" />
+        </div>
+
+        <div style="margin-bottom:10px;">
+          <t-checkbox v-model="flagLocal">bit0 本地执行 (0x01)</t-checkbox>
+          <div style="height:4px;"></div>
+          <t-checkbox v-model="flagRemote">bit1 转发远端 (0x02)</t-checkbox>
+          <div style="font-size:11px; color:var(--td-text-color-secondary,#666); margin-top:4px;">
+            当前 <t-tag variant="light" size="small">flags = 0x{{ flags.toString(16).padStart(2,'0').toUpperCase() }}</t-tag>
+          </div>
+        </div>
+
+        <div style="margin-bottom:10px;">
+          <div style="font-size:12px; margin-bottom:4px;">远端灯 (remote_light)</div>
+          <t-radio-group v-model="remoteLight" size="small">
+            <t-radio-button :value="0" :disabled="connState!=='connected'">关</t-radio-button>
+            <t-radio-button :value="1" :disabled="connState!=='connected'">开</t-radio-button>
+          </t-radio-group>
+        </div>
+
+        <div>
+          <div style="font-size:12px; margin-bottom:4px;">远端电机 (remote_dir)</div>
+          <t-radio-group v-model="remoteDir" size="small">
+            <t-radio-button :value="0" :disabled="connState!=='connected'">停 0</t-radio-button>
+            <t-radio-button :value="1" :disabled="connState!=='connected'">正 1</t-radio-button>
+            <t-radio-button :value="2" :disabled="connState!=='connected'">反 2</t-radio-button>
+          </t-radio-group>
+        </div>
+      </t-card>
+
+      <!-- 中: 姿态 -->
+      <t-card class="area-center" title="姿态可视化 (本 MPU 角速度积分)" size="small" :bordered="true">
+        <div class="attitude-wrap">
+          <svg class="attitude-svg" viewBox="-120 -120 240 240">
+            <!-- 外圈 -->
+            <circle cx="0" cy="0" r="110" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+            <!-- 水平线 -->
+            <line x1="-100" y1="0" x2="100" y2="0" stroke="#64748b" stroke-width="1" stroke-dasharray="4 4"/>
+            <line x1="0" y1="-100" x2="0" y2="100" stroke="#64748b" stroke-width="1" stroke-dasharray="4 4"/>
+            <!-- 旋转地平线 (随 pitch/roll 旋转) -->
+            <g :transform="`rotate(${roll})`">
+              <rect :x="-100" :y="pitch" width="200" height="100" fill="#3b82f6" fill-opacity="0.6" stroke="#1e40af" stroke-width="1"/>
+              <line x1="-100" :y1="pitch" x2="100" :y2="pitch" stroke="#fff" stroke-width="2"/>
+              <!-- 刻度 -->
+              <line x1="-100" y1="0" x2="-90" y2="0" stroke="#fff" stroke-width="1.5"/>
+              <line x1="90" y1="0" x2="100" y2="0" stroke="#fff" stroke-width="1.5"/>
+              <line x1="0" :y1="pitch" x2="0" :y2="pitch+20" stroke="#fff" stroke-width="1.5"/>
+            </g>
+            <!-- 飞机标志 (固定中央) -->
+            <polygon points="0,-8 -25,4 -8,4 -8,12 8,12 8,4 25,4" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+            <circle cx="0" cy="0" r="4" fill="#ef4444"/>
+          </svg>
+          <div class="attitude-text">
+            <div>Pitch <b>{{ pitch.toFixed(1) }}°</b> &nbsp; Roll <b>{{ roll.toFixed(1) }}°</b></div>
+            <div style="margin-top:4px; font-size:12px;">Gyr X <b>{{ localImu.gx }}</b> Y <b>{{ localImu.gy }}</b> Z <b>{{ localImu.gz }}</b></div>
+          </div>
+        </div>
+      </t-card>
+
+      <!-- 右: MPU -->
+      <t-card class="area-right" title="IMU 6 轴数据" size="small" :bordered="true">
+        <template #actions>
+          <t-tag variant="light" size="small">20Hz</t-tag>
+        </template>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px; font-weight:600; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+            <span>本地 MPU</span>
+            <t-tag theme="primary" variant="light" size="small">type=0x01</t-tag>
+          </div>
+          <t-row :gutter="4">
+            <t-col :span="8"><t-descriptions :items="[{label:'ax', value: localImu.ax}]" :column="1" size="small" /></t-col>
+            <t-col :span="8"><t-descriptions :items="[{label:'ay', value: localImu.ay}]" :column="1" size="small" /></t-col>
+            <t-col :span="8"><t-descriptions :items="[{label:'az', value: localImu.az}]" :column="1" size="small" /></t-col>
+          </t-row>
+          <div style="height:4px;"></div>
+          <t-row :gutter="4">
+            <t-col :span="8"><t-descriptions :items="[{label:'gx', value: localImu.gx}]" :column="1" size="small" /></t-col>
+            <t-col :span="8"><t-descriptions :items="[{label:'gy', value: localImu.gy}]" :column="1" size="small" /></t-col>
+            <t-col :span="8"><t-descriptions :items="[{label:'gz', value: localImu.gz}]" :column="1" size="small" /></t-col>
+          </t-row>
+        </div>
+
+        <div>
+          <div style="font-size:12px; font-weight:600; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+            <span>远端 MPU</span>
+            <t-tag theme="warning" variant="light" size="small">type=0x02</t-tag>
+          </div>
+          <t-row :gutter="4">
+            <t-col :span="8"><t-descriptions :items="[{label:'ax', value: remoteImu.ax}]" :column="1" size="small" /></t-col>
+            <t-col :span="8"><t-descriptions :items="[{label:'ay', value: remoteImu.ay}]" :column="1" size="small" /></t-col>
+            <t-col :span="8"><t-descriptions :items="[{label:'az', value: remoteImu.az}]" :column="1" size="small" /></t-col>
+          </t-row>
+          <div style="height:4px;"></div>
+          <t-row :gutter="4">
+            <t-col :span="8"><t-descriptions :items="[{label:'gx', value: remoteImu.gx}]" :column="1" size="small" /></t-col>
+            <t-col :span="8"><t-descriptions :items="[{label:'gy', value: remoteImu.gy}]" :column="1" size="small" /></t-col>
+            <t-col :span="8"><t-descriptions :items="[{label:'gz', value: remoteImu.gz}]" :column="1" size="small" /></t-col>
+          </t-row>
+        </div>
+      </t-card>
+
+      <!-- 底部统计 + 命令按钮 -->
+      <t-card class="area-stats" size="small" :bordered="true">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px; flex-shrink:0;">
+            <t-button theme="danger" size="small" :class="{ blink: stopActive }" :disabled="connState!=='connected'" @click="cmdStop">🚫 急停</t-button>
+            <t-button theme="success" size="small" :disabled="connState!=='connected'" @click="cmdRelease">✋ 释放</t-button>
+            <t-button theme="warning" size="small" :disabled="connState!=='connected'" @click="cmdReboot">🔄 重启主控</t-button>
+          </div>
+          <span style="width:1px; height:24px; background:#e5e7eb;"></span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <t-tag variant="light" size="small">已发控制帧: <b>{{ stats.txCtrl }}</b></t-tag>
+            <t-tag variant="light" size="small">已收 MPU 帧: <b>{{ stats.rxMpu }}</b></t-tag>
+            <t-tag variant="light" size="small">CRC 错误: <b :style="{ color: stats.crcErr>0 ? '#ef4444' : '' }">{{ stats.crcErr }}</b></t-tag>
+            <t-tag variant="light" size="small">本 MPU Hz: <b>{{ stats.localHz.toFixed(1) }}</b></t-tag>
+            <t-tag variant="light" size="small">远端 MPU Hz: <b>{{ stats.remoteHz.toFixed(1) }}</b></t-tag>
+            <t-tag variant="light" size="small">错误日志: <b :style="{ color: lastError ? '#ef4444' : '' }">{{ lastError || '无' }}</b></t-tag>
+          </div>
+        </div>
+      </t-card>
+    </div>
+
+    <!-- 切换工作台/控制台时的过渡 loading (毛玻璃 + 纯 spinner,不要文字) -->
+    <!-- showOverlay=false 关闭 TDesign 自带 backdrop,用下方自定义 div 做 1s 毛玻璃淡入 -->
+    <t-loading
+      :loading="switchingTo"
+      fullscreen
+      size="large"
+      :show-overlay="false"
+      :z-index="9999"
+    />
+    <transition name="switch-fade">
+      <div v-if="switchingTo" class="switch-overlay" :key="switchingTo"></div>
+    </transition>
+  </div>
+
+  <script src="../libs/vue.global.js"></script>
+  <script src="../libs/tdesign.min.js"></script>
+  <script>
+    const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch } = Vue
+
+    // ==================== 协议工具 ====================
+    // CRC8 = 前 15 字节 XOR
+    function crc8(buf) {
+      let x = 0
+      for (let i = 0; i < buf.length - 1; i++) x ^= buf[i]
+      return x & 0xFF
+    }
+
+    // 构造 16B 控制帧 (v4.0)
+    function buildCtrlFrame({ cmd = 0x10, speed = 0, yaw = 0,
+                              remote_light = 0, remote_dir = 0, flags = 0 } = {}) {
+      const buf = new Uint8Array(16)
+      buf[0]  = 0xAA
+      buf[1]  = 0x55
+      buf[2]  = cmd & 0xFF
+      buf[3]  = clampInt8(speed)
+      buf[4]  = clampInt8(yaw)
+      buf[5]  = remote_light & 0xFF
+      buf[6]  = remote_dir & 0xFF
+      buf[7]  = 0          // reserved
+      buf[8]  = 0          // (was servo0) reserved
+      buf[9]  = 0          // (was servo1) reserved
+      buf[10] = flags & 0xFF
+      buf[11] = 0; buf[12] = 0; buf[13] = 0; buf[14] = 0
+      buf[15] = crc8(buf)
+      return buf
+    }
+    function clampInt8(v) {
+      v = Math.round(v)
+      if (v > 127) return 127
+      if (v < -128) return -128
+      // JS 负数: 与 0xFF 取与后转 Uint8
+      return v & 0xFF
+    }
+
+    // 帧流解析状态机
+    class FrameParser {
+      constructor() {
+        this.buf = new Uint8Array(0)
+        this.onCtrl = null  // (frame) => void
+        this.onMpu  = null  // (mpu) => void
+        this.onCrcErr = null // (raw, msg) => void
+      }
+      push(chunk) {
+        // 合并 buffer
+        const merged = new Uint8Array(this.buf.length + chunk.length)
+        merged.set(this.buf, 0)
+        merged.set(chunk, this.buf.length)
+        this.buf = merged
+        // 解析循环
+        let i = 0
+        while (i < this.buf.length) {
+          // 找 HEAD0
+          if (this.buf[i] !== 0xAA && this.buf[i] !== 0xBB) { i++; continue }
+          const head0 = this.buf[i]
+          // 至少要 2 字节
+          if (i + 1 >= this.buf.length) { this.buf = this.buf.slice(i); return }
+          const head1 = this.buf[i + 1]
+          if (head0 === 0xAA && head1 === 0x55) {
+            // 16B 控制帧
+            if (i + 16 > this.buf.length) { this.buf = this.buf.slice(i); return }
+            const frame = this.buf.slice(i, i + 16)
+            const calcCrc = crc8(frame)
+            if (calcCrc === frame[15]) {
+              this.onCtrl && this.onCtrl(frame)
+            } else {
+              this.onCrcErr && this.onCrcErr(frame, 'ctrl crc fail')
+            }
+            i += 16
+          } else if (head0 === 0xBB && head1 === 0x66) {
+            // 16B MPU 帧
+            if (i + 16 > this.buf.length) { this.buf = this.buf.slice(i); return }
+            const frame = this.buf.slice(i, i + 16)
+            const calcCrc = crc8(frame)
+            if (calcCrc === frame[15]) {
+              this.onMpu && this.onMpu(parseMpu(frame))
+            } else {
+              this.onCrcErr && this.onCrcErr(frame, 'mpu crc fail')
+            }
+            i += 16
+          } else {
+            i++ // 跳过非法 head
+          }
+        }
+        this.buf = new Uint8Array(0)
+      }
+    }
+
+    function parseMpu(frame) {
+      const dv = new DataView(frame.buffer, frame.byteOffset, frame.byteLength)
+      return {
+        type: frame[2],
+        ax: dv.getInt16(3, true),
+        ay: dv.getInt16(5, true),
+        az: dv.getInt16(7, true),
+        gx: dv.getInt16(9, true),
+        gy: dv.getInt16(11, true),
+        gz: dv.getInt16(13, true)
+      }
+    }
+
+    // 把 Uint8Array 通过 IPC 传: 渲染层不能直接传 Buffer, 转 array
+    function toIpcBytes(u8) { return Array.from(u8) }
+
+    // ==================== App ====================
+    const App = {
+      setup() {
+        // 窗口控制
+        const minWindow = () => window.electronAPI?.minimize?.()
+        const maxWindow = () => window.electronAPI?.maximize?.()
+        const closeWindow = () => window.electronAPI?.closeWindow?.()
+        // 控制台模式下,点"工作台"= 关闭当前控制台窗口 + 打开新的工作台窗口(主进程保证同时间只有一个)
+        const backToWorkbench = () => window.electronAPI?.createMainWindow?.()
+        // 填充型按钮组:控制台窗口里 modeText 始终是"控制台",点"工作台"即切回工作台
+        const modeText = ref('控制台')
+        // 切换中: 显示 2 秒 TDesign 全屏 loading, 再触发"关旧开新"流程
+        const switchingTo = ref(false)
+        const SWITCH_DELAY_MS = 2000
+        function onModeChange(newMode) {
+          if (newMode === '工作台') {
+            switchingTo.value = true
+            setTimeout(() => {
+              switchingTo.value = false
+              backToWorkbench()
+            }, SWITCH_DELAY_MS)
+          }
+          // 点"控制台"值未变, change 不会触发,无需处理
+        }
+
+        // 连接
+        const host = ref('192.168.29.10')
+        const port = ref(8080)
+        const connState = ref('disconnected') // disconnected/connecting/connected/error
+        const lastError = ref('')
+        const connTarget = computed(() => `${host.value}:${port.value}`)
+        const connLabel = computed(() => ({
+          disconnected: '未连接',
+          connecting:   '连接中…',
+          connected:    '已连接',
+          error:        '连接错误'
+        })[connState.value] || connState.value)
+        const connTagTheme = computed(() => ({
+          disconnected: 'default',
+          connecting:   'warning',
+          connected:    'success',
+          error:        'danger'
+        })[connState.value] || 'default')
+
+        // Ping 测试状态
+        const pingState = ref('idle')        // idle/pinging/ok/fail
+        const pingMs = ref(null)             // 本次延迟(ms)
+        const pingLastMs = ref(null)         // 上次成功延迟(ms),空闲时显示
+        const pingError = ref('')            // 失败原因
+
+        async function doPing() {
+          if (pingState.value === 'pinging') return
+          pingState.value = 'pinging'
+          pingError.value = ''
+          const t0 = performance.now()
+          const r = await window.electronAPI?.consoleTcp?.ping?.({
+            host: host.value,
+            port: Number(port.value) || 8080,
+            timeout: 1500
+          })
+          if (r && r.ok) {
+            pingState.value = 'ok'
+            pingMs.value = r.ms ?? Math.round(performance.now() - t0)
+            pingLastMs.value = pingMs.value
+          } else {
+            pingState.value = 'fail'
+            pingError.value = r?.error || 'ping failed'
+            pingMs.value = null
+          }
+          // 3 秒后回到 idle 状态(保留上次延迟)
+          setTimeout(() => {
+            if (pingState.value === 'ok' || pingState.value === 'fail') {
+              pingState.value = 'idle'
+            }
+          }, 3000)
+        }
+
+        // 控制参数
+        const speed = ref(0)
+        const yaw = ref(0)
+        const flagLocal = ref(true)
+        const flagRemote = ref(true)
+        const remoteLight = ref(0)
+        const remoteDir = ref(0)
+        const flags = computed(() => (flagLocal.value ? 0x01 : 0) | (flagRemote.value ? 0x02 : 0))
+        const autoSend = ref(false)
+
+        // IMU
+        const localImu = reactive({ ax: 0, ay: 0, az: 0, gx: 0, gy: 0, gz: 0 })
+        const remoteImu = reactive({ ax: 0, ay: 0, az: 0, gx: 0, gy: 0, gz: 0 })
+
+        // 姿态
+        const pitch = ref(0)
+        const roll = ref(0)
+
+        // 统计
+        const stats = reactive({
+          txCtrl: 0, rxMpu: 0, crcErr: 0,
+          localHz: 0, remoteHz: 0,
+          _localCount: 0, _remoteCount: 0
+        })
+
+        // 命令状态
+        const stopActive = ref(false)
+
+        // 帧解析
+        const parser = new FrameParser()
+        parser.onMpu = (m) => {
+          if (m.type === 0x01) {
+            Object.assign(localImu, m)
+            stats.rxMpu++
+            stats._localCount++
+          } else if (m.type === 0x02) {
+            Object.assign(remoteImu, m)
+            stats._remoteCount++
+          }
+        }
+        parser.onCtrl = () => { /* 主控不会发控制帧回上位机,忽略 */ }
+        parser.onCrcErr = () => { stats.crcErr++ }
+
+        // TCP 事件
+        let unsubscribe = null
+        function bindTcpEvents() {
+          if (!window.electronAPI?.consoleTcp) {
+            lastError.value = 'consoleTcp API 不可用'
+            return
+          }
+          unsubscribe = window.electronAPI.consoleTcp.onEvent((msg) => {
+            if (msg.type === 'connecting') {
+              connState.value = 'connecting'
+              lastError.value = ''
+            } else if (msg.type === 'connect') {
+              connState.value = 'connected'
+              lastError.value = ''
+            } else if (msg.type === 'close') {
+              connState.value = 'disconnected'
+            } else if (msg.type === 'error') {
+              connState.value = 'error'
+              lastError.value = msg.message || '未知错误'
+            } else if (msg.type === 'data' && msg.payload) {
+              parser.push(msg.payload)
+            }
+          })
+        }
+
+        // 操作
+        async function doConnect() {
+          const r = await window.electronAPI?.consoleTcp?.connect({ host: host.value, port: port.value })
+          if (!r || !r.ok) {
+            connState.value = 'error'
+            lastError.value = r?.error || 'connect failed'
+          }
+        }
+        async function doDisconnect() {
+          await window.electronAPI?.consoleTcp?.disconnect?.()
+        }
+
+        function sendCtrl(extra = {}) {
+          if (connState.value !== 'connected') return
+          const frame = buildCtrlFrame({
+            cmd: 0x10,
+            speed: speed.value,
+            yaw: yaw.value,
+            remote_light: remoteLight.value,
+            remote_dir: remoteDir.value,
+            flags: flags.value,
+            ...extra
+          })
+          window.electronAPI?.consoleTcp?.send(toIpcBytes(frame))
+          stats.txCtrl++
+        }
+
+        function cmdStop() {
+          stopActive.value = true
+          setTimeout(() => stopActive.value = false, 600)
+          const frame = buildCtrlFrame({ cmd: 0x20, speed: 0, yaw: 0, flags: 0 })
+          window.electronAPI?.consoleTcp?.send(toIpcBytes(frame))
+          stats.txCtrl++
+        }
+        function cmdRelease() {
+          speed.value = 0; yaw.value = 0
+          sendCtrl()
+        }
+        function cmdReboot() {
+          if (!confirm('确认发送 REBOOT 指令？主控将在 500ms 后重启。')) return
+          const frame = buildCtrlFrame({ cmd: 0x30, flags: 0 })
+          window.electronAPI?.consoleTcp?.send(toIpcBytes(frame))
+          stats.txCtrl++
+          lastError.value = '已发送 REBOOT,主控 500ms 后重启'
+          setTimeout(() => { doDisconnect() }, 200)
+        }
+
+        function onSliderChange() {
+          // 单击后立即发一帧
+          if (connState.value === 'connected') sendCtrl()
+        }
+
+        // 自动发送 20Hz
+        let autoTimer = null
+        watch(autoSend, (v) => {
+          if (autoTimer) { clearInterval(autoTimer); autoTimer = null }
+          if (v) {
+            autoTimer = setInterval(() => {
+              if (connState.value === 'connected') sendCtrl()
+            }, 50)
+          }
+        })
+        watch(remoteLight, () => { if (connState.value === 'connected') sendCtrl() })
+        watch(remoteDir,   () => { if (connState.value === 'connected') sendCtrl() })
+        watch([flagLocal, flagRemote], () => { if (connState.value === 'connected') sendCtrl() })
+
+        // 键盘控制 (WASD/方向键 + 空格急停)
+        const keysDown = new Set()
+        function onKeyDown(e) {
+          if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return
+          const k = e.key.toLowerCase()
+          if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) {
+            e.preventDefault()
+          }
+          if (keysDown.has(k)) return
+          keysDown.add(k)
+          applyKeys()
+          if (k === ' ') cmdStop()
+        }
+        function onKeyUp(e) {
+          const k = e.key.toLowerCase()
+          keysDown.delete(k)
+          applyKeys()
+        }
+        function applyKeys() {
+          let s = 0, y = 0
+          if (keysDown.has('w') || keysDown.has('arrowup')) s += 60
+          if (keysDown.has('s') || keysDown.has('arrowdown')) s -= 60
+          if (keysDown.has('a') || keysDown.has('arrowleft')) y += 50
+          if (keysDown.has('d') || keysDown.has('arrowright')) y -= 50
+          if (s !== speed.value || y !== yaw.value) {
+            speed.value = s
+            yaw.value = y
+            if (connState.value === 'connected') sendCtrl()
+          }
+        }
+        function onBlur() { keysDown.clear(); applyKeys() }
+
+        // Hz 统计 (每秒重置)
+        let hzTimer = null
+
+        // 姿态积分: 用 gx/gy 累积 pitch/roll (单位 °/s, 20Hz 假设)
+        let lastAttTs = 0
+        function updateAttitude() {
+          const now = performance.now()
+          const dt = lastAttTs ? (now - lastAttTs) / 1000 : 0.05
+          lastAttTs = now
+          // gx/gy 是原始寄存器值, 131 LSB/(°/s) 转换为 °/s
+          const gxDeg = localImu.gx / 131
+          const gyDeg = localImu.gy / 131
+          // 简易积分 (开环, 仅供演示,实际需用互补滤波/四元数)
+          roll.value  = clampDeg(roll.value  + gxDeg * dt)
+          pitch.value = clampDeg(pitch.value + gyDeg * dt)
+        }
+        function clampDeg(v) { while (v > 180) v -= 360; while (v < -180) v += 360; return v }
+
+        onMounted(() => {
+          bindTcpEvents()
+          window.addEventListener('keydown', onKeyDown)
+          window.addEventListener('keyup', onKeyUp)
+          window.addEventListener('blur', onBlur)
+          hzTimer = setInterval(() => {
+            stats.localHz  = stats._localCount
+            stats.remoteHz = stats._remoteCount
+            stats._localCount = 0
+            stats._remoteCount = 0
+          }, 1000)
+          setInterval(updateAttitude, 50)
+        })
+
+        onUnmounted(() => {
+          unsubscribe && unsubscribe()
+          if (autoTimer) clearInterval(autoTimer)
+          if (hzTimer) clearInterval(hzTimer)
+          window.removeEventListener('keydown', onKeyDown)
+          window.removeEventListener('keyup', onKeyUp)
+          window.removeEventListener('blur', onBlur)
+        })
+
+        return {
+          // window
+          minWindow, maxWindow, closeWindow, backToWorkbench, modeText, onModeChange,
+          // connection
+          host, port, connState, connLabel, connTagTheme, connTarget,
+          lastError, doConnect, doDisconnect,
+          // ping
+          pingState, pingMs, pingLastMs, pingError, doPing,
+          // control
+          speed, yaw, flagLocal, flagRemote, flags, remoteLight, remoteDir,
+          autoSend, onSliderChange,
+          // imu
+          localImu, remoteImu, pitch, roll,
+          // stats
+          stats, stopActive,
+          // mode-switch loading
+          switchingTo,
+          // commands
+          cmdStop, cmdRelease, cmdReboot
+        }
+      }
+    }
+
+    const app = createApp(App)
+    // TDesign 标签(t- 前缀)是已注册的 Vue 组件,不要标记为 native custom element;
+    // 否则编译器会把 <t-card> 等当成 HTML 原生标签,导致 slots / v-if / v-for 转换失败,
+    // 抛 "Codegen node is missing for element/if/for node"。
+    app.config.compilerOptions.isCustomElement = (tag) => tag === 'webview'
+    if (window.TDesign) {
+      app.use(window.TDesign)
+    } else {
+      console.error('TDesign UMD 未加载, 请确认 libs/tdesign.min.js 存在并先于本页脚本加载')
+    }
+    app.mount('#app')
+  </script>
+</body>
+</html>

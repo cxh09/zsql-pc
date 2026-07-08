@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, session, Menu } = require('electron')
 const path = require('path')
 const { spawn } = require('child_process')
+const net = require('net')
 
 // Vite dev server URL is injected by the dev script (cross-env VITE_DEV_SERVER_URL=...).
 // In production, this env var is undefined and we fall back to the bundled renderer.
@@ -90,6 +91,15 @@ const createBrowserWindow = (type = 'main', options = {}) => {
         icon: options.icon || 'home'
       }
     })
+  } else if (options.mode === 'console') {
+    // 控制台模式：直接加载独立控制台页面 (pages/console.html)
+    if (VITE_DEV_SERVER_URL) {
+      // 开发模式:Vite dev server,需要把 pages/ 静态文件路径映射
+      // dev server 会把 pages/ 视为 /pages/... 访问不到,这里改用 file://
+      window.loadFile(path.join(__dirname, 'pages', 'console.html'))
+    } else {
+      window.loadFile(path.join(__dirname, 'pages', 'console.html'))
+    }
   } else if (VITE_DEV_SERVER_URL) {
     // 开发模式：加载 Vite dev server 以获得 HMR。
     window.loadURL(VITE_DEV_SERVER_URL)
@@ -368,6 +378,63 @@ ipcMain.handle('create-tab-window', (event, options) => {
   return newWindow.windowId
 })
 
+// 创建一个独立的"控制台"模式窗口（标题栏工作台/控制台切换触发）
+// 同时关闭发送方(工作台)窗口,保证同时只有一个窗口
+// 新窗口直接在原工作台位置上打开(原 +40 偏移已移除,避免切换时窗口"跳一下")
+ipcMain.handle('create-console-window', (event) => {
+  const senderWindow = BrowserWindow.fromWebContents(event.sender)
+  if (!senderWindow) return null
+
+  const bounds = senderWindow.getBounds()
+  const newWindow = createBrowserWindow('console', {
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
+    mode: 'console'
+  })
+  // 关键修复: 新控制台是"切换目标",不是工作台的子窗口
+  // 必须在工作台关闭前把它从 childWindows 摘除,否则工作台 close 的级联会把它也关掉
+  childWindows.delete(newWindow)
+  // 新窗口可见后再关旧窗口,避免中间出现空隙
+  const closeOld = () => {
+    if (senderWindow && !senderWindow.isDestroyed()) senderWindow.close()
+  }
+  if (newWindow.webContents.isLoading()) {
+    newWindow.once('ready-to-show', closeOld)
+  } else {
+    closeOld()
+  }
+  return newWindow.windowId
+})
+
+// 创建一个独立的"工作台"模式窗口（控制台窗口里点"工作台"触发）
+// 同时关闭发送方(控制台)窗口,保证同时只有一个窗口
+ipcMain.handle('create-main-window', (event) => {
+  const senderWindow = BrowserWindow.fromWebContents(event.sender)
+  if (!senderWindow) return null
+
+  const bounds = senderWindow.getBounds()
+  const newWindow = createBrowserWindow('main', {
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height
+  })
+  // 接管全局 mainWindow 引用
+  mainWindow = newWindow
+  // 新窗口可见后再关旧窗口,避免中间出现空隙
+  const closeOld = () => {
+    if (senderWindow && !senderWindow.isDestroyed()) senderWindow.close()
+  }
+  if (newWindow.webContents.isLoading()) {
+    newWindow.once('ready-to-show', closeOld)
+  } else {
+    closeOld()
+  }
+  return newWindow.windowId
+})
+
 // 获取窗口信息
 ipcMain.handle('get-window-info', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender)
@@ -412,4 +479,155 @@ ipcMain.handle('open-tab-request', (_event, options) => {
     mainWindow.webContents.send('open-tab-from-main', options || {})
   }
   return null
+})
+
+// ========== 控制台窗口 TCP 客户端桥接 (system net,非 W5500) ==========
+// 每个控制台窗口对应一个 socket,按 windowId 隔离
+const consoleSockets = new Map() // windowId -> { socket, host, port }
+
+function getWindowIdFromEvent(event) {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  return win?.windowId ?? null
+}
+
+ipcMain.handle('console-tcp-connect', (event, options) => {
+  const winId = getWindowIdFromEvent(event)
+  if (winId == null) return { ok: false, error: 'window-id-missing' }
+
+  // 已有 socket 先关掉
+  const existing = consoleSockets.get(winId)
+  if (existing?.socket && !existing.socket.destroyed) {
+    try { existing.socket.destroy() } catch (e) { /* ignore */ }
+  }
+  consoleSockets.delete(winId)
+
+  const host = String(options?.host || '192.168.29.10')
+  const port = Number(options?.port || 8080)
+  if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+    return { ok: false, error: 'invalid-port' }
+  }
+
+  const socket = new net.Socket()
+  socket.setKeepAlive(true, 3000)
+
+  const onClose = () => {
+    event.sender.send('console-tcp-event', { type: 'close' })
+    const cur = consoleSockets.get(winId)
+    if (cur?.socket === socket) consoleSockets.delete(winId)
+  }
+  const onError = (err) => {
+    event.sender.send('console-tcp-event', {
+      type: 'error',
+      message: err && err.message ? err.message : String(err)
+    })
+  }
+  const onData = (buf) => {
+    // 转发原始 Buffer(切分后由渲染层做帧解析)
+    event.sender.send('console-tcp-event', {
+      type: 'data',
+      payload: buf
+    })
+  }
+  socket.on('close', onClose)
+  socket.once('error', onError)
+  socket.on('data', onData)
+
+  consoleSockets.set(winId, { socket, host, port })
+  // 通知渲染层开始连接(异步)
+  event.sender.send('console-tcp-event', { type: 'connecting', host, port })
+
+  socket.connect(port, host, () => {
+    if (consoleSockets.get(winId)?.socket !== socket) return
+    event.sender.send('console-tcp-event', { type: 'connect', host, port })
+  })
+
+  return { ok: true, host, port }
+})
+
+ipcMain.handle('console-tcp-send', (event, payload) => {
+  const winId = getWindowIdFromEvent(event)
+  if (winId == null) return { ok: false, error: 'window-id-missing' }
+  const entry = consoleSockets.get(winId)
+  if (!entry?.socket || entry.socket.destroyed) {
+    return { ok: false, error: 'not-connected' }
+  }
+  let buf
+  if (Buffer.isBuffer(payload)) {
+    buf = payload
+  } else if (payload?.data && Array.isArray(payload.data)) {
+    buf = Buffer.from(payload.data)
+  } else if (Array.isArray(payload)) {
+    buf = Buffer.from(payload)
+  } else {
+    return { ok: false, error: 'invalid-payload' }
+  }
+  try {
+    entry.socket.write(buf)
+    return { ok: true, bytes: buf.length }
+  } catch (err) {
+    return { ok: false, error: err.message || 'write-failed' }
+  }
+})
+
+ipcMain.handle('console-tcp-disconnect', (event) => {
+  const winId = getWindowIdFromEvent(event)
+  if (winId == null) return { ok: false, error: 'window-id-missing' }
+  const entry = consoleSockets.get(winId)
+  if (!entry) return { ok: true }
+  try { entry.socket.destroy() } catch (e) { /* ignore */ }
+  consoleSockets.delete(winId)
+  return { ok: true }
+})
+
+// Ping 测试:用一次性 socket 探测 host:port 的连通性,测量 TCP 三次握手耗时(ms)
+// 不影响窗口内已有的持久 socket(若已建立连接)
+ipcMain.handle('console-tcp-ping', (_event, options) => {
+  const host = String(options?.host || '192.168.29.10')
+  const port = Number(options?.port || 8080)
+  const timeout = Number(options?.timeout || 1500)
+  if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+    return { ok: false, error: 'invalid-port', host, port }
+  }
+  return new Promise((resolve) => {
+    const start = Date.now()
+    const socket = new net.Socket()
+    let settled = false
+    const finish = (result) => {
+      if (settled) return
+      settled = true
+      try { socket.destroy() } catch (e) { /* ignore */ }
+      resolve(result)
+    }
+    socket.setTimeout(timeout)
+    socket.once('connect', () => {
+      finish({ ok: true, host, port, ms: Date.now() - start })
+    })
+    socket.once('error', (err) => {
+      finish({
+        ok: false,
+        host,
+        port,
+        error: err && err.message ? err.message : String(err)
+      })
+    })
+    socket.once('timeout', () => {
+      finish({ ok: false, host, port, error: 'timeout', ms: Date.now() - start })
+    })
+    try {
+      socket.connect(port, host)
+    } catch (err) {
+      finish({ ok: false, host, port, error: err.message || 'connect-failed' })
+    }
+  })
+})
+
+// 控制台窗口关闭时清理 socket
+app.on('browser-window-created', (_event, win) => {
+  win.on('closed', () => {
+    const entry = consoleSockets.get(win.windowId)
+    if (entry?.socket && !entry.socket.destroyed) {
+      try { entry.socket.destroy() } catch (e) { /* ignore */ }
+    }
+    consoleSockets.delete(win.windowId)
+  })
 })

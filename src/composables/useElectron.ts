@@ -14,6 +14,8 @@ export interface ElectronAPI {
   // Tab events
   onOpenNewTab: (cb: (url: string) => void) => void
   createTabWindow: (options: Record<string, unknown>) => Promise<number | null>
+  createConsoleWindow: () => Promise<unknown>
+  createMainWindow: () => Promise<unknown>
   getWindowInfo: () => Promise<{ windowId: number | null; windowType: string } | null>
   sendToMain: (channel: string, ...args: unknown[]) => Promise<void>
   getChildWindows: () => Promise<Array<{ windowId: number; title: string }>>
@@ -33,6 +35,15 @@ export interface ElectronAPI {
 
   // Devtools
   openDevTools: () => Promise<void>
+
+  // ========== 控制台窗口 TCP 客户端 API ==========
+  consoleTcp: {
+    connect: (options: { host?: string; port?: number }) => Promise<{ ok: boolean; host?: string; port?: number; error?: string }>
+    send: (payload: number[] | Uint8Array | { data: number[] }) => Promise<{ ok: boolean; bytes?: number; error?: string }>
+    disconnect: () => Promise<{ ok: boolean; error?: string }>
+    ping: (options: { host?: string; port?: number; timeout?: number }) => Promise<{ ok: boolean; host?: string; port?: number; ms?: number; error?: string }>
+    onEvent: (callback: (msg: { type: string; host?: string; port?: number; message?: string; payload?: Uint8Array }) => void) => () => void
+  }
 
   // App root path (used to resolve webview subpages to file:// URLs)
   getAppPath: () => Promise<string>

@@ -64,6 +64,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 创建新窗口（从标签页分离）
   createTabWindow: (options) => ipcRenderer.invoke('create-tab-window', options),
 
+  // 创建一个独立的"控制台"模式窗口
+  createConsoleWindow: () => ipcRenderer.invoke('create-console-window'),
+  createMainWindow: () => ipcRenderer.invoke('create-main-window'),
+
   // 获取当前窗口信息
   getWindowInfo: () => ipcRenderer.invoke('get-window-info'),
 
@@ -98,6 +102,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 监听全局搜索切换事件（来自主进程菜单 accelerator）
   onToggleSearch: (callback) => {
     ipcRenderer.on('toggle-search', () => callback())
+  },
+
+  // ========== 控制台窗口 TCP 客户端 API ==========
+  // 由控制台页面 (pages/console.html) 使用,主进程维护按 windowId 隔离的 socket
+  consoleTcp: {
+    connect: (options) => ipcRenderer.invoke('console-tcp-connect', options || {}),
+    send: (payload) => ipcRenderer.invoke('console-tcp-send', payload),
+    disconnect: () => ipcRenderer.invoke('console-tcp-disconnect'),
+    ping: (options) => ipcRenderer.invoke('console-tcp-ping', options || {}),
+    onEvent: (callback) => {
+      // payload 中 data: Uint8Array (从 Buffer 序列化)
+      const handler = (_event, msg) => {
+        if (msg && msg.payload && msg.payload.data) {
+          callback({ ...msg, payload: new Uint8Array(msg.payload.data) })
+        } else {
+          callback(msg)
+        }
+      }
+      ipcRenderer.on('console-tcp-event', handler)
+      return () => ipcRenderer.removeListener('console-tcp-event', handler)
+    }
   },
 
   // 通知主进程:全局搜索浮层是否打开(用于 ESC 关闭逻辑)

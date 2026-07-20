@@ -112,7 +112,9 @@ function close() { getElectronAPI()?.closeWindow() }
 </template>
 
 <style scoped>
-/* 切换工作台/控制台时的毛玻璃背景: 1s 淡入(TDesign 自带 backdrop 不会重新触发动画,用 Vue transition 强制每次都跑) */
+/* 切换工作台/控制台时的毛玻璃背景: 1s 淡入
+ * 关键: backdrop-filter 不能 transition,否则生产模式下合成器会丢弃 blur
+ * 用 opacity 0→1 做"淡入"感,blur(16px) 写为静态属性保持生效 */
 .switch-overlay {
   position: fixed;
   inset: 0;
@@ -120,14 +122,20 @@ function close() { getElectronAPI()?.closeWindow() }
   pointer-events: none;
   background-color: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(16px);
+  isolation: isolate;                   /* 强制新堆叠上下文,防止父元素 backdrop-filter 失效 */
+  will-change: backdrop-filter, opacity;/* 提示合成器创建独立层 */
+  opacity: 1;                           /* 自然态=1(最终态),enter-from 用 0 做起点 */
 }
 .switch-fade-enter-active {
-  transition:
-    background-color 1s ease,
-    backdrop-filter 1s ease;
+  transition: opacity 1s ease;          /* 只过渡 opacity,绝不 transition backdrop-filter */
 }
 .switch-fade-enter-from {
-  background-color: rgba(255, 255, 255, 0);
-  backdrop-filter: blur(0);
+  opacity: 0;                           /* 起始透明,过渡到 1 */
+}
+.switch-fade-leave-active {
+  transition: opacity 0.4s ease;        /* 旧窗口关闭时反向淡出(可选) */
+}
+.switch-fade-leave-to {
+  opacity: 0;
 }
 </style>

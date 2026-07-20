@@ -54,41 +54,6 @@
     .title-mode-toggle:active { transform: scale(0.96); }
     /* 标题栏内可交互区域: Electron 标题栏是 drag 区,内部按钮/单选框需显式标记为 no-drag 才能点击 */
     .title-bar-interactive { -webkit-app-region: no-drag; }
-    .title-bar-spacer { flex: 1; }
-    .title-bar-window-controls {
-      display: flex; align-items: center; height: 100%;
-      -webkit-app-region: no-drag;
-    }
-    .window-btn {
-      width: 46px; height: 100%;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: all 0.2s;
-      color: var(--td-text-color-primary);
-    }
-    .window-btn:hover { background: var(--td-bg-color-secondarycontainer); }
-    .window-btn.close:hover { background: #e81123; color: white; }
-    .window-btn svg { width: 10px; height: 10px; }
-
-    /* 主区三栏布局 */
-    .main { flex: 1; display: grid; grid-template-columns: 360px 1fr 360px; grid-template-rows: auto 1fr auto;
-      grid-template-areas: "conn conn conn" "left center right" "stats stats stats";
-      gap: 12px; padding: 12px; overflow: hidden; }
-    .area-conn  { grid-area: conn; }
-    .area-left  { grid-area: left; }
-    .area-center{ grid-area: center; }
-    .area-right { grid-area: right; }
-    .area-stats { grid-area: stats; }
-
-    /* 中央: 姿态 SVG (TDesign 不可覆盖, 保留自写) */
-    .attitude-wrap { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; min-height: 0; }
-    .attitude-svg  { width: 240px; height: 240px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.08)); }
-    .attitude-text { font-family: ui-monospace, monospace; font-size: 14px; color: var(--td-text-color-secondary, #666); text-align: center; }
-    .attitude-text b { color: #3b82f6; font-size: 18px; }
-
-    /* 急停按钮闪烁高亮 */
-    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
-    .t-button.is-danger.blink { animation: blink 0.4s linear infinite; }
-
     /* 切换工作台/控制台时的毛玻璃背景: 1s 淡入(与 TitleBar.vue 一致)
      * 关键: backdrop-filter 不能 transition,否则生产模式下合成器会丢弃 blur
      * 用 opacity 0→1 做"淡入"感,blur(16px) 写为静态属性保持生效 */
@@ -136,6 +101,40 @@
       flex-shrink: 0;            /* 防止 flex 容器把 spinner 缩小 */
       font-size: var(--td-comp-size-xxxl, 56px) !important;
     }
+    .title-bar-spacer { flex: 1; }
+    .title-bar-window-controls {
+      display: flex; align-items: center; height: 100%;
+      -webkit-app-region: no-drag;
+    }
+    .window-btn {
+      width: 46px; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s;
+      color: var(--td-text-color-primary);
+    }
+    .window-btn:hover { background: var(--td-bg-color-secondarycontainer); }
+    .window-btn.close:hover { background: #e81123; color: white; }
+    .window-btn svg { width: 10px; height: 10px; }
+
+    /* 主区三栏布局 */
+    .main { flex: 1; display: grid; grid-template-columns: 360px 1fr 360px; grid-template-rows: auto 1fr auto;
+      grid-template-areas: "conn conn conn" "left center right" "stats stats stats";
+      gap: 12px; padding: 12px; overflow: hidden; }
+    .area-conn  { grid-area: conn; }
+    .area-left  { grid-area: left; }
+    .area-center{ grid-area: center; }
+    .area-right { grid-area: right; }
+    .area-stats { grid-area: stats; }
+
+    /* 中央: 姿态 SVG (TDesign 不可覆盖, 保留自写) */
+    .attitude-wrap { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; min-height: 0; }
+    .attitude-svg  { width: 240px; height: 240px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.08)); }
+    .attitude-text { font-family: ui-monospace, monospace; font-size: 14px; color: var(--td-text-color-secondary, #666); text-align: center; }
+    .attitude-text b { color: #3b82f6; font-size: 18px; }
+
+    /* 急停按钮闪烁高亮 */
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+    .t-button.is-danger.blink { animation: blink 0.4s linear infinite; }
   </style>
 </head>
 <body>
@@ -499,12 +498,11 @@
         // 控制台模式下,点"工作台"= 关闭当前控制台窗口 + 打开新的工作台窗口(主进程保证同时间只有一个)
         const backToWorkbench = () => window.electronAPI?.createMainWindow?.()
         // 填充型按钮组:控制台窗口里 modeText 始终是"控制台",点"工作台"即切回工作台
-        // 切换中: 显示 2 秒毛玻璃 loading, 再走"关旧开新"流程(与 TitleBar.vue 一致)
         const modeText = ref('控制台')
+        // 切换中: 显示 2 秒毛玻璃 loading, 再走"关旧开新"流程(与 TitleBar.vue 一致)
         const switchingTo = ref('')
         const SWITCH_DELAY_MS = 2000
         function onModeChange(newMode) {
-          // 点击当前模式时,change 事件不触发(因为 v-model 值未变),所以这里 newMode 必然不等于 modeText
           if (newMode === '工作台') {
             switchingTo.value = 'main'
             setTimeout(() => {
@@ -512,7 +510,7 @@
               backToWorkbench()
             }, SWITCH_DELAY_MS)
           }
-          // 点"控制台" 值未变,change 不会触发,无需处理
+          // 点"控制台"值未变, change 不会触发,无需处理
         }
 
         // 连接
@@ -777,8 +775,6 @@
         return {
           // window
           minWindow, maxWindow, closeWindow, backToWorkbench, modeText, onModeChange,
-          // mode-switch loading
-          switchingTo,
           // connection
           host, port, connState, connLabel, connTagTheme, connTarget,
           lastError, doConnect, doDisconnect,
@@ -791,6 +787,8 @@
           localImu, remoteImu, pitch, roll,
           // stats
           stats, stopActive,
+          // mode-switch loading
+          switchingTo,
           // commands
           cmdStop, cmdRelease, cmdReboot
         }

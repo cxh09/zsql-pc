@@ -3,329 +3,400 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>数字图传 - 智拾清澜</title>
+  <title>数字图传 - 智拾清澜工作台</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231890ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='10' r='8'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Cpath d='M7 22h10'/%3E%3Cpath d='M12 22v-4'/%3E%3C/svg%3E" type="image/svg+xml">
-  <link rel="stylesheet" href="../libs/tdesign.min.css">
+  <link rel="stylesheet" href="../libs/tdesign.min.css" />
   <style>
+    /* 防止页面闪烁 - 在CSS加载完成前隐藏内容 */
+    html { visibility: hidden; opacity: 0; }
+    html.loaded { visibility: visible; opacity: 1; transition: opacity 0.2s ease; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: var(--td-bg-color-page);
       min-height: 100vh;
-      padding: 24px;
+      padding: 16px 24px;
     }
 
-    .page-container { max-width: 1200px; margin: 0 auto; }
+    #app { min-height: 100vh; }
+
     .page-header { margin-bottom: 20px; }
-    .page-title {
+    .page-header h1 {
       font-size: 24px; font-weight: 600; color: var(--td-text-color-primary);
-      margin-bottom: 6px; display: flex; align-items: center; gap: 10px;
+      display: flex; align-items: center; gap: 10px;
     }
-    .page-subtitle { font-size: 14px; color: var(--td-text-color-secondary); }
+    .page-header p { font-size: 14px; color: var(--td-text-color-secondary); margin-top: 4px; }
 
-    .play-bar {
-      display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px;
+    .control-bar {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
     }
-    .play-bar .t-input__wrap { flex: 1; }
+    .control-bar .t-input__wrap { flex: 1; min-width: 160px; }
 
-    .video-wrapper {
-      position: relative; background: #000; border-radius: 8px;
-      overflow: hidden; min-height: 480px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .video-wrapper video {
-      width: 100%; height: 100%; max-height: 720px;
-      object-fit: contain; display: block;
-    }
-    .video-placeholder { text-align: center; color: var(--td-text-color-secondary); }
+    .service-status { font-size: 13px; }
+    .service-status.ok { color: var(--td-success-color); }
+    .service-status.err { color: var(--td-error-color); }
 
-    .video-controls {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 10px 14px;
-      background: linear-gradient(to top, rgba(0,0,0,0.65), transparent);
+    .adv-panel { margin-bottom: 16px; }
+    .adv-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .adv-row .t-input { width: 220px; }
+
+    .video-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) { .video-grid { grid-template-columns: 1fr; } }
+
+    .video-panel {
+      background: var(--td-bg-color-container);
+      border: 1px solid var(--td-border-level-1-color);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .video-panel-header {
       display: flex; align-items: center; justify-content: space-between;
-      opacity: 0; transition: opacity 0.25s ease;
+      padding: 10px 14px; border-bottom: 1px solid var(--td-border-level-1-color);
     }
-    .video-wrapper:hover .video-controls { opacity: 1; }
-    .video-controls .status-text {
-      color: #fff; font-size: 13px; display: flex; align-items: center; gap: 8px;
+    .cam-tag {
+      font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 4px; color: #fff;
     }
-    .status-dot {
-      width: 8px; height: 8px; border-radius: 50%; display: inline-block;
-    }
-    .status-dot.connecting { background: var(--td-warning-color); animation: pulse 1.4s infinite; }
-    .status-dot.connected  { background: var(--td-success-color); }
-    .status-dot.disconnected { background: var(--td-text-color-secondary); }
-    .status-dot.error { background: var(--td-error-color); }
-    @keyframes pulse { 0%{opacity:1} 50%{opacity:.35} 100%{opacity:1} }
+    .cam-tag.cam0 { background: #3b82f6; }
+    .cam-tag.cam1 { background: #f97316; }
+    .cam-status { font-size: 13px; color: var(--td-text-color-secondary); }
+    .cam-status.live { color: var(--td-success-color); }
+    .cam-status.err { color: var(--td-error-color); }
 
-    .advanced-panel { margin-top: 12px; }
+    .video-area {
+      position: relative; background: #000; aspect-ratio: 4 / 3;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 220px; overflow: hidden;
+    }
+    .video-area img {
+      width: 100%; height: 100%; object-fit: contain; display: block;
+    }
+    .video-placeholder {
+      text-align: center; color: rgba(255,255,255,0.55); font-size: 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .video-panel-footer {
+      padding: 8px 14px; font-size: 12px; color: var(--td-text-color-secondary);
+      display: flex; gap: 16px;
+    }
+    .video-panel-footer b { color: var(--td-text-color-primary); font-weight: 600; }
+
+    .log-box {
+      max-height: 180px; overflow-y: auto;
+      background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px;
+      font-size: 12px; line-height: 1.7; margin: 0;
+      font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+    }
   </style>
 </head>
 <body>
   <div id="app">
-    <div class="page-container">
-      <div class="page-header">
-        <h1 class="page-title">数字图传</h1>
-        <p class="page-subtitle">输入 RTSP 地址，点击播放即可查看实时画面</p>
-      </div>
+    <div class="page-header">
+      <h1>数字图传</h1>
+      <p>接收板卡双路 MJPG 视频流（UDP 50010）</p>
+    </div>
 
-      <!-- 播放栏 -->
-      <div class="play-bar">
-        <t-input
-          v-model="rtspUrl"
-          placeholder="请输入 RTSP 地址，例如 rtsp://admin:password@192.168.1.100:554/stream1"
-          clearable
-          size="large"
-          @enter="handlePlay"
-        />
-        <t-button theme="primary" size="large" :loading="isConnecting" :disabled="!rtspUrl.trim()" @click="handlePlay">
-          <template #icon><t-icon :name="isPlaying ? 'refresh' : 'play-circle'" /></template>
-          {{ isPlaying ? '重新播放' : '播放' }}
-        </t-button>
-        <t-button theme="default" size="large" :disabled="!isPlaying" @click="handleStop">
-          <template #icon><t-icon name="stop-circle" /></template>
-          停止
-        </t-button>
-        <t-button theme="default" size="large" :disabled="!isPlaying" @click="handleFullscreen">
-          <template #icon><t-icon name="fullscreen" /></template>
-          全屏
-        </t-button>
-      </div>
+    <!-- 控制栏 -->
+    <div class="control-bar">
+      <t-input v-model="boardIp" placeholder="板卡 IP" clearable size="large" style="max-width: 180px;">
+        <template #prefixIcon><t-icon name="server" /></template>
+      </t-input>
+      <t-button theme="primary" size="large" :loading="connecting" :disabled="connecting" @click="handleConnect">
+        <template #icon><t-icon name="play-circle" /></template>
+        连接
+      </t-button>
+      <t-button theme="default" size="large" :disabled="!connected" @click="handleStop">
+        <template #icon><t-icon name="stop-circle" /></template>
+        断开
+      </t-button>
+      <span class="service-status" :class="serviceClass">{{ serviceText }}</span>
+    </div>
 
-      <!-- 视频区 -->
-      <t-card :title="isPlaying ? '实时画面' : '视频预览'" :subtitle="statusText">
-        <div class="video-wrapper" ref="videoWrapper">
-          <video
-            v-show="isPlaying || videoLoaded"
-            id="video"
-            ref="videoEl"
-            autoplay
-            playsinline
-            muted
-          ></video>
-          <div v-if="!isPlaying && !videoLoaded" class="video-placeholder">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 10px; opacity: .45;">
-              <circle cx="12" cy="10" r="8"/><circle cx="12" cy="10" r="3"/><path d="M7 22h10"/><path d="M12 22v-4"/>
-            </svg>
-            <p>请输入 RTSP 地址并点击播放</p>
+    <!-- 高级设置 -->
+    <div class="adv-panel">
+      <t-collapse :default-value="[]">
+        <t-collapse-panel header="高级设置" value="advanced">
+          <div class="adv-row">
+            <t-input v-model="boardPort" label="板卡 HTTP 端口" placeholder="8080" type="number" />
+            <t-input v-model="udpPort" label="本地 UDP 接收端口" placeholder="50010" type="number" />
+            <t-input v-model="dstIp" label="目标 IP（可选，走 /api/config）" placeholder="留空则用 /api/connect 一键连接" />
           </div>
-          <div class="video-controls" v-show="isPlaying">
-            <div class="status-text">
-              <span class="status-dot" :class="status"></span>
-              {{ statusText }}
-            </div>
-            <div>
-              <t-button theme="primary" variant="text" shape="square" size="small" @click="handleFullscreen">
-                <t-icon name="fullscreen" />
-              </t-button>
-            </div>
-          </div>
-        </div>
-      </t-card>
-
-      <!-- 调试日志 -->
-      <t-collapse :default-value="[]" style="margin-top: 16px;">
-        <t-collapse-panel header="调试日志" value="logs">
-          <pre style="max-height: 240px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; margin: 0;">{{ logText || '暂无日志，点击播放后这里会显示连接过程' }}</pre>
         </t-collapse-panel>
       </t-collapse>
+    </div>
 
-      <!-- 高级设置 -->
-      <div class="advanced-panel">
-        <t-collapse :default-value="[]">
-          <t-collapse-panel header="高级设置" value="advanced">
-            <div style="display: flex; gap: 12px; align-items: center;">
-              <t-input
-                v-model="webrtcStreamerUrl"
-                label="WebRTC-Streamer 服务地址"
-                placeholder="http://127.0.0.1:8000"
-                style="flex: 1;"
-                clearable
-              />
-              <t-button theme="default" @click="saveConfig">
-                <template #icon><t-icon name="save" /></template>
-                保存配置
-              </t-button>
-            </div>
-          </t-collapse-panel>
-        </t-collapse>
+    <!-- 双路视频 -->
+    <div class="video-grid">
+      <div class="video-panel">
+        <div class="video-panel-header">
+          <span class="cam-tag cam0">CAM 1</span>
+          <span class="cam-status" :class="cam1Class">{{ cam1Status }}</span>
+        </div>
+        <div class="video-area">
+          <img v-if="showCam0" :src="srcCam0" alt="CAM 1" />
+          <div v-else class="video-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.55-2.28A1 1 0 0 1 21 8.62v6.76a1 1 0 0 1-1.45.9L15 14"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg>
+            <span>等待 CAM 1 视频流…</span>
+          </div>
+        </div>
+        <div class="video-panel-footer">
+          <span>帧率 <b>{{ fps0.toFixed(1) }} fps</b></span>
+          <span>帧数 <b>{{ frames0 }}</b></span>
+          <span>数据量 <b>{{ bytes0Text }}</b></span>
+        </div>
+      </div>
+
+      <div class="video-panel">
+        <div class="video-panel-header">
+          <span class="cam-tag cam1">CAM 2</span>
+          <span class="cam-status" :class="cam2Class">{{ cam2Status }}</span>
+        </div>
+        <div class="video-area">
+          <img v-if="showCam1" :src="srcCam1" alt="CAM 2" />
+          <div v-else class="video-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.55-2.28A1 1 0 0 1 21 8.62v6.76a1 1 0 0 1-1.45.9L15 14"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg>
+            <span>等待 CAM 2 视频流…</span>
+          </div>
+        </div>
+        <div class="video-panel-footer">
+          <span>帧率 <b>{{ fps1.toFixed(1) }} fps</b></span>
+          <span>帧数 <b>{{ frames1 }}</b></span>
+          <span>数据量 <b>{{ bytes1Text }}</b></span>
+        </div>
       </div>
     </div>
+
+    <!-- 调试日志 -->
+    <t-collapse :default-value="[]">
+      <t-collapse-panel header="调试日志" value="logs">
+        <pre class="log-box">{{ logText || '暂无日志' }}</pre>
+      </t-collapse-panel>
+    </t-collapse>
   </div>
 
   <script src="../libs/vue.global.js"></script>
   <script src="../libs/tdesign.min.js"></script>
-  <script src="../libs/webrtcstreamer.js"></script>
   <script>
     const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
 
+    // 与主进程本地服务通信(该页面运行在 webview 中,无 electronAPI,走 HTTP)
+    const API_BASE = 'http://127.0.0.1:50110';
+
+    function formatBytes(n) {
+      if (!n) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let i = 0;
+      let v = n;
+      while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+      return v.toFixed(1) + ' ' + units[i];
+    }
+
     createApp({
       setup() {
-        const webrtcStreamerUrl = ref('http://127.0.0.1:8000');
-        const rtspUrl = ref('');
-        const isPlaying = ref(false);
-        const isConnecting = ref(false);
-        const videoLoaded = ref(false);
-        const videoEl = ref(null);
+        const boardIp = ref('192.168.29.10');
+        const boardPort = ref('8080');
+        const udpPort = ref('50010');
+        const dstIp = ref('');
 
-        let streamer = null;
-        const status = ref('disconnected');
-        const statusText = computed(() => {
-          const map = {
-            disconnected: '未连接',
-            connecting: '连接中...',
-            connected: '已连接',
-            error: '连接错误'
-          };
-          return map[status.value] || '未知状态';
+        const connected = ref(false);
+        const connecting = ref(false);
+        const serviceOk = ref(false);
+        const serviceError = ref('');
+        const serviceText = computed(() => {
+          if (serviceOk.value) return '本地服务正常';
+          return '本地服务不可用：' + serviceError.value;
         });
+        const serviceClass = computed(() => (serviceOk.value ? 'ok' : 'err'));
+
+        const srcCam0 = ref(''); const showCam0 = ref(false);
+        const srcCam1 = ref(''); const showCam1 = ref(false);
+        const fps0 = ref(0); const fps1 = ref(0);
+        const frames0 = ref(0); const frames1 = ref(0);
+        const bytes0 = ref(0); const bytes1 = ref(0);
+        const bytes0Text = computed(() => formatBytes(bytes0.value));
+        const bytes1Text = computed(() => formatBytes(bytes1.value));
+        const cam1Status = computed(() => connected.value ? (showCam0.value ? '接收中' : '等待视频流…') : '未连接');
+        const cam2Status = computed(() => connected.value ? (showCam1.value ? '接收中' : '等待视频流…') : '未连接');
+        const cam1Class = computed(() => (showCam0.value ? 'live' : ''));
+        const cam2Class = computed(() => (showCam1.value ? 'live' : ''));
 
         const logs = ref([]);
         const logText = computed(() => logs.value.join('\n'));
-
         function log(msg) {
-          const ts = new Date().toLocaleTimeString();
-          logs.value.push(`[${ts}] ${msg}`);
-          if (logs.value.length > 100) logs.value.shift();
-          console.log(msg);
+          const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+          logs.value.push('[' + ts + '] ' + msg);
+          if (logs.value.length > 200) logs.value.shift();
+          console.log('[图传]', msg);
         }
 
-        function loadConfig() {
-          try {
-            const savedStreamer = localStorage.getItem('webrtcStreamerUrl');
-            const savedRtsp = localStorage.getItem('rtspUrl');
-            if (savedStreamer) webrtcStreamerUrl.value = savedStreamer;
-            if (savedRtsp) rtspUrl.value = savedRtsp;
-          } catch (e) {
-            console.warn('读取本地配置失败', e);
+        // ---- 流接收 ----
+        let streamAbort = null;
+        let fpsCounter0 = 0;
+        let fpsCounter1 = 0;
+
+        function concatBytes(a, b) {
+          const out = new Uint8Array(a.length + b.length);
+          out.set(a);
+          out.set(b, a.length);
+          return out;
+        }
+
+        function onFrame(stream, jpeg) {
+          const url = URL.createObjectURL(new Blob([jpeg], { type: 'image/jpeg' }));
+          if (stream === 1) {
+            if (srcCam1.value) URL.revokeObjectURL(srcCam1.value);
+            srcCam1.value = url;
+            showCam1.value = true;
+            frames1.value += 1;
+            bytes1.value += jpeg.length;
+            fpsCounter1 += 1;
+          } else {
+            if (srcCam0.value) URL.revokeObjectURL(srcCam0.value);
+            srcCam0.value = url;
+            showCam0.value = true;
+            frames0.value += 1;
+            bytes0.value += jpeg.length;
+            fpsCounter0 += 1;
           }
         }
 
-        function saveConfig() {
+        async function connectStream() {
+          const ctrl = new AbortController();
+          streamAbort = ctrl;
           try {
-            localStorage.setItem('webrtcStreamerUrl', webrtcStreamerUrl.value);
-            localStorage.setItem('rtspUrl', rtspUrl.value);
-          } catch (e) {
-            console.warn('保存本地配置失败', e);
-          }
-        }
-
-        async function testConnection() {
-          const srv = webrtcStreamerUrl.value.trim();
-          log('正在测试连接: ' + srv);
-          try {
-            const resp = await fetch(srv + '/api/getIceServers');
-            if (resp.ok) {
-              log('webrtc-streamer 服务可达 ✓');
-              return true;
-            } else {
-              log('服务返回异常 HTTP 状态: ' + resp.status);
-              return false;
+            const resp = await fetch(API_BASE + '/stream', { signal: ctrl.signal });
+            if (!resp.ok || !resp.body) throw new Error('流服务异常 HTTP ' + resp.status);
+            const reader = resp.body.getReader();
+            let buf = new Uint8Array(0);
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (value && value.length) buf = concatBytes(buf, value);
+              // 帧格式: 1B stream + 4B 长度(大端) + JPEG
+              while (buf.length >= 5) {
+                const stream = buf[0];
+                const len = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
+                if (len <= 0 || buf.length < 5 + len) break;
+                onFrame(stream, buf.slice(5, 5 + len));
+                buf = buf.subarray(5 + len);
+              }
             }
           } catch (e) {
-            log('连接 webrtc-streamer 失败: ' + e.message);
+            if (e && e.name !== 'AbortError') log('视频流连接中断: ' + e.message);
+          } finally {
+            streamAbort = null;
+          }
+        }
+
+        // ---- 控制 ----
+        async function handleConnect() {
+          connecting.value = true;
+          try {
+            const payload = {
+              boardIp: boardIp.value.trim(),
+              boardPort: Number(boardPort.value) || 8080,
+              udpPort: Number(udpPort.value) || 50010
+            };
+            if (dstIp.value.trim()) payload.dst = dstIp.value.trim();
+            log('正在连接板卡 ' + payload.boardIp + ' …');
+            const resp = await fetch(API_BASE + '/api/connect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || !data.ok) {
+              log('连接失败: ' + (data.error || data.detail || ('HTTP ' + resp.status)));
+              return;
+            }
+            log('连接成功，本地 UDP 端口: ' + data.udpPort);
+            log('板卡响应: ' + (data.board && data.board.text));
+            connected.value = true;
+            connectStream();
+          } catch (e) {
+            log('连接异常: ' + (e && e.message));
+          } finally {
+            connecting.value = false;
+          }
+        }
+
+        async function handleStop() {
+          if (streamAbort) {
+            streamAbort.abort();
+            streamAbort = null;
+          }
+          try {
+            await fetch(API_BASE + '/api/stop', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: '{}'
+            });
+          } catch (e) {
+            log('断开请求失败: ' + (e && e.message));
+          }
+          connected.value = false;
+          if (srcCam0.value) URL.revokeObjectURL(srcCam0.value);
+          if (srcCam1.value) URL.revokeObjectURL(srcCam1.value);
+          srcCam0.value = ''; srcCam1.value = '';
+          showCam0.value = false; showCam1.value = false;
+          frames0.value = 0; frames1.value = 0;
+          bytes0.value = 0; bytes1.value = 0;
+          log('已断开');
+        }
+
+        async function pingService() {
+          try {
+            const ctrl = new AbortController();
+            setTimeout(() => ctrl.abort(), 2000);
+            const resp = await fetch(API_BASE + '/api/ping', { signal: ctrl.signal });
+            const data = await resp.json().catch(() => ({}));
+            serviceOk.value = resp.ok && !!data.ok;
+            if (!serviceOk.value) serviceError.value = '服务响应异常';
+            return serviceOk.value;
+          } catch (e) {
+            serviceOk.value = false;
+            serviceError.value = (e && e.name === 'AbortError') ? '连接超时' : (e && e.message);
             return false;
           }
         }
 
-        async function handlePlay() {
-          const rtsp = rtspUrl.value.trim();
-          if (!rtsp) return;
-          handleStop();
-          saveConfig();
-          logs.value = [];
+        // 每秒统计帧率
+        let fpsTimer = setInterval(() => {
+          fps0.value = fpsCounter0;
+          fps1.value = fpsCounter1;
+          fpsCounter0 = 0;
+          fpsCounter1 = 0;
+        }, 1000);
 
-          isConnecting.value = true;
-          status.value = 'connecting';
-          videoLoaded.value = false;
-          log('开始连接 RTSP: ' + rtsp);
-          log('webrtc-streamer 服务: ' + webrtcStreamerUrl.value.trim());
+        onMounted(async () => {
+          document.documentElement.classList.add('loaded');
+          const ok = await pingService();
+          if (ok) log('本地服务已就绪');
+          else log('本地服务不可用，请重启应用或检查 127.0.0.1:' + (API_BASE.split(':').pop() || 50110));
+        });
 
-          const srvOk = await testConnection();
-          if (!srvOk) {
-            status.value = 'error';
-            isConnecting.value = false;
-            log('请先启动 webrtc-streamer 服务！');
-            return;
-          }
-
+        onUnmounted(() => {
+          if (streamAbort) streamAbort.abort();
+          clearInterval(fpsTimer);
+          // 尽力通知主进程停止(页面被关闭时)
           try {
-            streamer = new WebRtcStreamer('video', webrtcStreamerUrl.value.trim());
-
-            // 劫持原始错误回调
-            const originalOnError = streamer.onError.bind(streamer);
-            streamer.onError = function(err) {
-              originalOnError(err);
-              log('WebRTC 错误: ' + err);
-              status.value = 'error';
-              isConnecting.value = false;
-            };
-
-            const originalCreatePeerConnection = streamer.createPeerConnection.bind(streamer);
-            streamer.createPeerConnection = function() {
-              const pc = originalCreatePeerConnection();
-              const originalHandler = pc.oniceconnectionstatechange;
-              pc.oniceconnectionstatechange = function(evt) {
-                if (originalHandler) originalHandler(evt);
-                const state = pc.iceConnectionState;
-                log('ICE 状态变化: ' + state);
-                if (state === 'connected' || state === 'completed') {
-                  status.value = 'connected';
-                  videoLoaded.value = true;
-                  isConnecting.value = false;
-                  log('视频已连接 ✓');
-                } else if (state === 'disconnected') {
-                  status.value = 'disconnected';
-                  log('连接已断开');
-                } else if (state === 'failed' || state === 'closed') {
-                  status.value = 'error';
-                  isConnecting.value = false;
-                  log('连接失败');
-                }
-              };
-              return pc;
-            };
-
-            streamer.connect(rtsp);
-            isPlaying.value = true;
-          } catch (err) {
-            log('播放异常: ' + err.message);
-            status.value = 'error';
-            isConnecting.value = false;
-          }
-        }
-
-        function handleStop() {
-          if (streamer) {
-            try { streamer.disconnect(); } catch (e) {}
-            streamer = null;
-          }
-          isPlaying.value = false;
-          isConnecting.value = false;
-          status.value = 'disconnected';
-          videoLoaded.value = false;
-          const video = document.getElementById('video');
-          if (video) video.srcObject = null;
-        }
-
-        function handleFullscreen() {
-          const el = videoEl.value || document.getElementById('video');
-          if (!el) return;
-          if (el.requestFullscreen) el.requestFullscreen();
-          else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-          else if (el.msRequestFullscreen) el.msRequestFullscreen();
-        }
-
-        onMounted(() => { loadConfig(); });
-        onUnmounted(() => { handleStop(); });
+            fetch(API_BASE + '/api/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+          } catch (e) { /* ignore */ }
+        });
 
         return {
-          webrtcStreamerUrl, rtspUrl, isPlaying, isConnecting,
-          videoLoaded, videoEl, status, statusText,
+          boardIp, boardPort, udpPort, dstIp,
+          connected, connecting, serviceOk, serviceError, serviceText, serviceClass,
+          srcCam0, showCam0, srcCam1, showCam1,
+          fps0, fps1, frames0, frames1, bytes0Text, bytes1Text,
+          cam1Status, cam2Status, cam1Class, cam2Class,
           logs, logText,
-          handlePlay, handleStop, handleFullscreen, saveConfig, testConnection
+          handleConnect, handleStop
         };
       }
     }).use(TDesign).mount('#app');

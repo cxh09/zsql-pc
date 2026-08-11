@@ -1,0 +1,12 @@
+- [x] Checkpoint 1: demo 目录结构完整，包含所有必要文件
+- [x] Checkpoint 2: Electron 主进程能正常创建窗口
+- [x] Checkpoint 3: 登录页面 UI 完整，包含用户名/密码输入和登录按钮
+- [x] Checkpoint 4: 登录功能正常，点击登录后进入主页面
+- [x] Checkpoint 5: 标题栏包含品牌标识和窗口控制按钮
+- [x] Checkpoint 6: 窗口最小化、最大化、关闭功能正常
+- [x] Checkpoint 7: 侧边栏包含导航菜单项
+- [x] Checkpoint 8: 点击侧边栏菜单项能切换标签页
+- [x] Checkpoint 9: 内容区显示对应页面内容
+- [x] Checkpoint 10: 无业务代码残留（预约、客户会话等）
+- [x] Checkpoint 11: 依赖安装成功
+- [x] Checkpoint 12: 开发服务器能正常启动

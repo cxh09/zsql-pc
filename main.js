@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, session, Menu } = require('electron')
 const path = require('path')
-const { spawn } = require('child_process')
 const net = require('net')
+const videoService = require('./video-transmission-service')
 
 // Vite dev server URL is injected by the dev script (cross-env VITE_DEV_SERVER_URL=...).
 // In production, this env var is undefined and we fall back to the bundled renderer.
@@ -10,41 +10,8 @@ const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 let mainWindow = null
 let childWindows = new Set()
 let windowIdCounter = 0
-let webrtcStreamerProcess = null
 // 主窗口"全局搜索"浮层是否打开;true 时不响应 ESC 关闭,让渲染层先关搜索
 let searchOpenInMain = false
-
-// 启动 webrtc-streamer 子进程
-function startWebRTCStreamer() {
-  const exePath = path.join(__dirname, 'assets', 'webrtc-streamer', 'webrtc-streamer.exe')
-  try {
-    webrtcStreamerProcess = spawn(exePath, ['-H', '127.0.0.1:8000'], {
-      windowsHide: true,
-      detached: false
-    })
-    webrtcStreamerProcess.on('error', (err) => {
-      console.error('webrtc-streamer 启动失败:', err.message)
-    })
-    webrtcStreamerProcess.on('exit', (code) => {
-      console.log('webrtc-streamer 已退出，代码:', code)
-      webrtcStreamerProcess = null
-    })
-    console.log('webrtc-streamer 已启动 (pid:', webrtcStreamerProcess.pid + ')')
-  } catch (err) {
-    console.error('启动 webrtc-streamer 异常:', err)
-  }
-}
-
-function stopWebRTCStreamer() {
-  if (webrtcStreamerProcess && !webrtcStreamerProcess.killed) {
-    try {
-      webrtcStreamerProcess.kill()
-    } catch (e) {
-      console.error('停止 webrtc-streamer 失败:', e)
-    }
-    webrtcStreamerProcess = null
-  }
-}
 
 // 获取主窗口
 const getMainWindow = () => mainWindow
@@ -256,9 +223,13 @@ const buildAppMenu = () => {
   Menu.setApplicationMenu(menu)
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   buildAppMenu()
-  startWebRTCStreamer()
+  // 启动数字图传本地服务(供 webview 中的图传页面通过 HTTP 收流)
+  const videoSvc = await videoService.startService()
+  if (!videoSvc.ok) {
+    console.error('数字图传本地服务启动失败:', videoSvc.error)
+  }
   createWindow()
 
   app.on('activate', () => {
@@ -267,8 +238,12 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
-  stopWebRTCStreamer()
   if (process.platform !== 'darwin') app.quit()
+})
+
+// 应用退出时停止图传服务(关闭 UDP socket 与本地 HTTP 服务)
+app.on('will-quit', () => {
+  videoService.stopService()
 })
 
 // 拦截 webview 中 window.open() 新窗口请求，改为在新标签页打开

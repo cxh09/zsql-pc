@@ -51,6 +51,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "video-transmission-service.js",
       "dist/renderer/**/*",
       "pages/**/*",
       "libs/**/*",
